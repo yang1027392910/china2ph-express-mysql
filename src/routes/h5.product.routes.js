@@ -1,0 +1,17 @@
+const express = require('express');
+const router = express.Router();
+const productController = require('../controllers/product.controller');
+
+function noCache(req, res, next) {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+    'Surrogate-Control': 'no-store'
+  });
+  next();
+}
+
+router.get('/list', noCache, productController.h5ProductList);
+
+module.exports = router;
