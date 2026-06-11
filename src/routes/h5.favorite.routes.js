@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const hotProductController = require('../controllers/hotProduct.controller');
-const { optionalAuth } = require('../middlewares/auth.middleware');
+const favoriteController = require('../controllers/favorite.controller');
+const { auth } = require('../middlewares/auth.middleware');
 
 function noCache(req, res, next) {
   res.set({
@@ -13,6 +13,7 @@ function noCache(req, res, next) {
   next();
 }
 
-router.get('/list', noCache, optionalAuth, hotProductController.h5List);
+router.post('/click', noCache, auth, favoriteController.click);
+router.get('/list', noCache, auth, favoriteController.list);
 
 module.exports = router;

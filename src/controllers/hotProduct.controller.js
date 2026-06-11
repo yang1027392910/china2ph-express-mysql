@@ -223,6 +223,7 @@ async function queryHotProductList(req, res, onlyEnabled, errorMessage) {
   try {
     await ensureHotProductSchema();
     const productSource = await getProductSource();
+    const userId = Number(req.user?.id || 0);
 
     const { page, pageSize, offset, whereSql, params } = getHotProductListFilters(req, onlyEnabled);
 
@@ -253,15 +254,17 @@ async function queryHotProductList(req, res, onlyEnabled, errorMessage) {
         ${productSource.tiktokScoreSelect} AS tiktokScore,
         ${productSource.moqSelect} AS moq,
         ${productSource.weightSelect} AS weight,
+        IF(f.product_id IS NULL, 0, 1) AS isFavorite,
         h.created_at AS createdAt,
         h.updated_at AS updatedAt
       FROM hot_product h
       INNER JOIN ${productSource.table} p ON p.id = h.product_id
       LEFT JOIN category c ON c.id = p.category_id
+      LEFT JOIN favorite f ON f.product_id = p.id AND f.user_id = ?
       ${whereSql}
       ORDER BY h.sort ASC, h.id DESC
       LIMIT ? OFFSET ?`,
-      [...params, pageSize, offset]
+      [userId, ...params, pageSize, offset]
     );
 
     success(res, {

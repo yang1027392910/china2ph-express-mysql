@@ -153,6 +153,7 @@ function getProductListFilters(req, onlyEnabled = false) {
 async function queryProductList(req, res, onlyEnabled, errorMessage) {
   try {
     const { page, pageSize, offset, whereSql, params } = getProductListFilters(req, onlyEnabled);
+    const userId = Number(req.user?.id || 0);
 
     const [[countRow]] = await pool.query(
       `SELECT COUNT(*) AS total FROM productlist p ${whereSql}`,
@@ -176,12 +177,14 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
         p.stock,
         p.sales,
         p.status,
-        p.created_at AS createdAt
+        p.created_at AS createdAt,
+        IF(f.product_id IS NULL, 0, 1) AS isFavorite
       FROM productlist p
+      LEFT JOIN favorite f ON f.product_id = p.id AND f.user_id = ?
       ${whereSql}
       ORDER BY p.created_at DESC, p.id DESC
       LIMIT ? OFFSET ?`,
-      [...params, pageSize, offset]
+      [userId, ...params, pageSize, offset]
     );
 
     success(res, {

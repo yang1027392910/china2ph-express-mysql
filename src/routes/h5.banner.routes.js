@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const hotProductController = require('../controllers/hotProduct.controller');
-const { optionalAuth } = require('../middlewares/auth.middleware');
+const bannerController = require('../controllers/banner.controller');
 
 function noCache(req, res, next) {
   res.set({
@@ -13,6 +12,6 @@ function noCache(req, res, next) {
   next();
 }
 
-router.get('/list', noCache, optionalAuth, hotProductController.h5List);
+router.get('/list', noCache, bannerController.h5List);
 
 module.exports = router;

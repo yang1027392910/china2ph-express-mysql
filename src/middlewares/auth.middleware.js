@@ -33,6 +33,16 @@ function auth(req, res, next) {
   next();
 }
 
+function optionalAuth(req, res, next) {
+  const token = getToken(req);
+
+  if (token) {
+    req.user = authService.verifyToken(token) || null;
+  }
+
+  next();
+}
+
 function adminAuth(req, res, next) {
   auth(req, res, () => {
     if (req.user.role !== 'admin') {
@@ -45,5 +55,6 @@ function adminAuth(req, res, next) {
 
 module.exports = {
   auth,
+  optionalAuth,
   adminAuth
 };

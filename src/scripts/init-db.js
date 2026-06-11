@@ -56,6 +56,53 @@ async function main() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uk_hot_product_hot_type_product_id (hot_type, product_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS banner (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+      title VARCHAR(100) NOT NULL COMMENT '标题',
+      subtitle VARCHAR(255) DEFAULT NULL COMMENT '副标题',
+      image VARCHAR(255) NOT NULL COMMENT 'Banner图片',
+      scene VARCHAR(30) DEFAULT 'home' COMMENT '展示位置：home首页 purchase_advisor采购顾问',
+      action_type VARCHAR(30) NOT NULL COMMENT '跳转类型',
+      action_value VARCHAR(255) DEFAULT NULL COMMENT '跳转值',
+      sort INT DEFAULT 0 COMMENT '排序',
+      status TINYINT DEFAULT 1 COMMENT '状态：0禁用 1启用',
+      start_time DATETIME DEFAULT NULL COMMENT '开始时间',
+      end_time DATETIME DEFAULT NULL COMMENT '结束时间',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Banner表'`,
+    `CREATE TABLE IF NOT EXISTS logistics_supplier (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+      name VARCHAR(100) NOT NULL COMMENT '物流名称',
+      logo VARCHAR(255) DEFAULT '' COMMENT '供应商logo',
+      shipping_method VARCHAR(50) NOT NULL COMMENT '运输方式（海运/空运/DDP）',
+      delivery_time VARCHAR(50) DEFAULT NULL COMMENT '运输时效，例如 7-15天',
+      unit_price DECIMAL(10,2) DEFAULT 0.00 COMMENT '单价',
+      pricing_method VARCHAR(50) DEFAULT NULL COMMENT '计算方式（按kg/按CBM/按箱）',
+      sort INT DEFAULT 0 COMMENT '排序',
+      status TINYINT(1) DEFAULT 1 COMMENT '状态：0禁用 1启用',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物流供应商展示表'`,
+    `CREATE TABLE IF NOT EXISTS favorite (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT NOT NULL,
+      product_id BIGINT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+      UNIQUE KEY uk_favorite_user_product (user_id, product_id),
+      INDEX idx_favorite_user_created_at (user_id, created_at),
+      INDEX idx_favorite_product_id (product_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表'`,
+    `CREATE TABLE IF NOT EXISTS procurement_contact (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+      contact_type VARCHAR(20) NOT NULL COMMENT '联系方式类型：messenger/whatsapp/telegram/phone/email',
+      contact_value VARCHAR(100) NOT NULL COMMENT '联系方式',
+      description VARCHAR(255) DEFAULT NULL COMMENT '描述',
+      sort INT DEFAULT 0 COMMENT '排序',
+      status TINYINT DEFAULT 1 COMMENT '状态：0禁用 1启用',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='采购客服联系方式表'`,
     `CREATE TABLE IF NOT EXISTS profit_calculation (
       id BIGINT PRIMARY KEY AUTO_INCREMENT,
       product_id BIGINT,
@@ -70,6 +117,35 @@ async function main() {
       estimated_profit DECIMAL(10,2),
       profit_margin DECIMAL(6,2),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS \`user\` (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      email VARCHAR(100) NOT NULL,
+      nickname VARCHAR(100) DEFAULT '',
+      avatar VARCHAR(255) DEFAULT '',
+      status TINYINT DEFAULT 1,
+      register_ip VARCHAR(50),
+      last_login_ip VARCHAR(50),
+      login_count INT DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      last_login_time DATETIME,
+      UNIQUE KEY uk_user_email (email),
+      INDEX idx_user_status (status),
+      INDEX idx_user_created_at (created_at)
+    )`,
+    `CREATE TABLE IF NOT EXISTS email_code_log (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      email VARCHAR(100) NOT NULL,
+      code VARCHAR(10) NOT NULL,
+      scene VARCHAR(20) DEFAULT 'login',
+      status TINYINT DEFAULT 0 COMMENT '0未使用 1已使用 2已过期',
+      send_status TINYINT DEFAULT 1 COMMENT '1成功 0失败',
+      expire_time DATETIME,
+      ip VARCHAR(50),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_email_scene_status (email, scene, status),
+      INDEX idx_expire_time (expire_time)
     )`
   ];
 
