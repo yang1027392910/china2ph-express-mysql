@@ -308,3 +308,122 @@ exports.adminProductCreate = async (req, res) => {
     fail(res, 'Failed to create admin product');
   }
 };
+
+exports.adminProductUpdate = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = normalizeNumberValue(body.id ?? req.params.id);
+
+    if (!id) {
+      return fail(res, 'Product id is required', 400);
+    }
+
+    const fieldMap = [
+      {
+        camelKey: 'categoryId',
+        snakeKey: 'category_id',
+        column: 'category_id',
+        normalize: normalizeNumberValue
+      },
+      {
+        camelKey: 'title',
+        column: 'title',
+        normalize: value => normalizeTextValue(value).trim(),
+        validate: value => Boolean(value),
+        error: 'Product title is required'
+      },
+      { camelKey: 'subtitle', column: 'subtitle', normalize: normalizeTextValue },
+      { camelKey: 'cover', column: 'cover', normalize: normalizeTextValue },
+      { camelKey: 'images', column: 'images', normalize: normalizeImagesValue },
+      { camelKey: 'description', column: 'description', normalize: normalizeTextValue },
+      {
+        camelKey: 'chinaPrice',
+        snakeKey: 'china_price',
+        column: 'china_price',
+        normalize: normalizeNumberValue
+      },
+      {
+        camelKey: 'shippingFee',
+        snakeKey: 'shipping_fee',
+        column: 'shipping_fee',
+        normalize: normalizeNumberValue
+      },
+      {
+        camelKey: 'phPrice',
+        snakeKey: 'ph_price',
+        column: 'ph_price',
+        normalize: normalizeNumberValue
+      },
+      { camelKey: 'profit', column: 'profit', normalize: normalizeNumberValue },
+      {
+        camelKey: 'minimumOrderQuantity',
+        snakeKey: 'minimum_order_quantity',
+        column: 'minimum_order_quantity',
+        normalize: value => normalizeNumberValue(value, 1)
+      },
+      { camelKey: 'stock', column: 'stock', normalize: normalizeNumberValue },
+      { camelKey: 'sales', column: 'sales', normalize: normalizeNumberValue },
+      { camelKey: 'status', column: 'status', normalize: normalizeNumberValue }
+    ];
+
+    const updates = [];
+    const params = [];
+
+    for (const field of fieldMap) {
+      const value = pickBodyValue(body, field.camelKey, field.snakeKey, undefined);
+      if (value === undefined) continue;
+
+      const normalizedValue = field.normalize(value);
+      if (field.validate && !field.validate(normalizedValue)) {
+        return fail(res, field.error, 400);
+      }
+
+      updates.push(`${field.column} = ?`);
+      params.push(normalizedValue);
+    }
+
+    if (!updates.length) {
+      return fail(res, 'No fields to update', 400);
+    }
+
+    params.push(id);
+    const [result] = await pool.query(
+      `UPDATE productlist
+      SET ${updates.join(', ')}
+      WHERE id = ?`,
+      params
+    );
+
+    if (!result.affectedRows) {
+      return fail(res, 'Product not found', 404);
+    }
+
+    const [[product]] = await pool.query(
+      `SELECT
+        p.id,
+        p.category_id AS categoryId,
+        p.title,
+        p.subtitle,
+        p.cover,
+        p.images,
+        p.description,
+        p.china_price AS chinaPrice,
+        p.shipping_fee AS shippingFee,
+        p.ph_price AS phPrice,
+        p.profit,
+        p.minimum_order_quantity AS minimumOrderQuantity,
+        p.stock,
+        p.sales,
+        p.status,
+        p.created_at AS createdAt
+      FROM productlist p
+      WHERE p.id = ?`,
+      [id]
+    );
+
+    success(res, product, 'updated');
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to update admin product');
+  }
+};

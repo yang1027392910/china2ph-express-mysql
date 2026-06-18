@@ -15,5 +15,9 @@ function noCache(req, res, next) {
 
 router.get('/list', noCache, adminAuth, logisticsSupplierController.adminList);
 router.post('/list/created', noCache, adminAuth, logisticsSupplierController.adminCreate);
+router.post('/list/update', noCache, adminAuth, logisticsSupplierController.adminUpdate);
+router.put('/list/:id', noCache, adminAuth, logisticsSupplierController.adminUpdate);
+router.post('/list/delete', noCache, adminAuth, logisticsSupplierController.adminDelete);
+router.delete('/list/:id', noCache, adminAuth, logisticsSupplierController.adminDelete);
 
 module.exports = router;

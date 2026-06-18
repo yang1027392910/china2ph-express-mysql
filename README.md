@@ -64,5 +64,6 @@ npm run dev
 - GET /api/admin/emailCodeLog/list?page=1&pageSize=10&keyword=test&scene=login&status=0&sendStatus=1
 - GET /api/admin/emailCodeLog/detail/:id
 - POST /api/admin/emailCodeLog/list/dele
+- GET /api/home/index
 - GET /api/home/hot
 - POST /api/profit/calculate

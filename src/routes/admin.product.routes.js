@@ -15,5 +15,7 @@ function noCache(req, res, next) {
 
 router.get('/list', noCache, adminAuth, productController.adminProductList);
 router.post('/list/created', noCache, adminAuth, productController.adminProductCreate);
+router.post('/list/update', noCache, adminAuth, productController.adminProductUpdate);
+router.put('/list/:id', noCache, adminAuth, productController.adminProductUpdate);
 
 module.exports = router;

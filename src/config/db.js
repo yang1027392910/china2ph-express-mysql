@@ -12,4 +12,23 @@ const pool = mysql.createPool({
   charset: 'utf8mb4'
 });
 
+async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log('MySQL connected');
+    connection.release();
+  } catch (err) {
+    console.error('MySQL error:', err.message);
+  }
+}
+
+console.log('DB CONFIG:', {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  database: process.env.DB_NAME
+});
+
+testConnection();
+
 module.exports = pool;
