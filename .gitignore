@@ -7,7 +7,7 @@ node_modules/
 .env.*.local
 
 # Runtime uploads and generated assets
-uploads/
+
 
 # Logs
 logs/
