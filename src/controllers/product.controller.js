@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const permissionService = require('../services/productContactPermission.service');
 const { success, fail } = require('../utils/response');
 
 exports.list = async (req, res) => {
@@ -177,6 +178,11 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
         p.stock,
         p.sales,
         p.status,
+        p.show_supplier_contact AS showSupplierContact,
+        p.supplier_name AS supplierName,
+        p.supplier_whatsapp AS supplierWhatsapp,
+        p.supplier_wechat AS supplierWechat,
+        p.supplier_phone AS supplierPhone,
         p.created_at AS createdAt,
         IF(f.product_id IS NULL, 0, 1) AS isFavorite
       FROM productlist p
@@ -187,11 +193,48 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
       [userId, ...params, pageSize, offset]
     );
 
+    let responseList = list;
+
+    if (onlyEnabled) {
+      const productIds = list.map(product => Number(product.id));
+      const authorizedProductIds = await permissionService.getAuthorizedProductIdSet(
+        userId,
+        productIds
+      );
+
+      responseList = list.map(product => {
+        const canViewSupplierContact =
+          Number(product.showSupplierContact) === 1 &&
+          authorizedProductIds.has(Number(product.id));
+
+        const {
+          supplierName,
+          supplierWhatsapp,
+          supplierWechat,
+          supplierPhone,
+          ...publicProduct
+        } = product;
+
+        return {
+          ...publicProduct,
+          canViewSupplierContact,
+          supplierContact: canViewSupplierContact
+            ? {
+                name: supplierName,
+                whatsapp: supplierWhatsapp,
+                wechat: supplierWechat,
+                phone: supplierPhone
+              }
+            : null
+        };
+      });
+    }
+
     success(res, {
       total: countRow.total,
       page,
       pageSize,
-      list
+      list: responseList
     });
   } catch (error) {
     console.error(error);
@@ -207,7 +250,7 @@ exports.h5ProductList = async (req, res) => {
   await queryProductList(req, res, true, 'Failed to get h5 product list');
 };
 
-function pickBodyValue(body, camelKey, snakeKey, defaultValue = null) {
+function pickBodyValue(body, camelKey, snakeKey, defaultValue = undefined) {
   return body[camelKey] ?? body[snakeKey] ?? defaultValue;
 }
 
@@ -363,7 +406,37 @@ exports.adminProductUpdate = async (req, res) => {
       },
       { camelKey: 'stock', column: 'stock', normalize: normalizeNumberValue },
       { camelKey: 'sales', column: 'sales', normalize: normalizeNumberValue },
-      { camelKey: 'status', column: 'status', normalize: normalizeNumberValue }
+      { camelKey: 'status', column: 'status', normalize: normalizeNumberValue },
+      {
+        camelKey: 'showSupplierContact',
+        snakeKey: 'show_supplier_contact',
+        column: 'show_supplier_contact',
+        normalize: normalizeNumberValue
+      },
+      {
+        camelKey: 'supplierName',
+        snakeKey: 'supplier_name',
+        column: 'supplier_name',
+        normalize: normalizeTextValue
+      },
+      {
+        camelKey: 'supplierWhatsapp',
+        snakeKey: 'supplier_whatsapp',
+        column: 'supplier_whatsapp',
+        normalize: normalizeTextValue
+      },
+      {
+        camelKey: 'supplierWechat',
+        snakeKey: 'supplier_wechat',
+        column: 'supplier_wechat',
+        normalize: normalizeTextValue
+      },
+      {
+        camelKey: 'supplierPhone',
+        snakeKey: 'supplier_phone',
+        column: 'supplier_phone',
+        normalize: normalizeTextValue
+      }
     ];
 
     const updates = [];
@@ -415,6 +488,11 @@ exports.adminProductUpdate = async (req, res) => {
         p.stock,
         p.sales,
         p.status,
+        p.show_supplier_contact AS showSupplierContact,
+        p.supplier_name AS supplierName,
+        p.supplier_whatsapp AS supplierWhatsapp,
+        p.supplier_wechat AS supplierWechat,
+        p.supplier_phone AS supplierPhone,
         p.created_at AS createdAt
       FROM productlist p
       WHERE p.id = ?`,
