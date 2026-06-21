@@ -19,11 +19,26 @@ Init tables and seed data:
 npm run init-db
 ```
 
-Run:
+Run locally on `http://localhost:3001` using `.env.local`:
 
 ```bash
 npm run dev
 ```
+
+The explicit local alias is also available:
+
+```bash
+npm run dev:local
+```
+
+Deploy/start the Aliyun service using `.env`:
+
+```bash
+npm start
+```
+
+`.env.local` overrides only the local development process, while `npm start`
+continues to use `.env`.
 
 ## APIs
 

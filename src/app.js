@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+require('./config/env');
 
 const h5CategoryRoutes = require('./routes/h5.category.routes');
 const h5ProductRoutes = require('./routes/h5.product.routes');
