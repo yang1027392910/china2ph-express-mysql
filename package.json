@@ -2,7 +2,7 @@
   "scripts": {
     "dev": "nodemon src/app.js --env=.env.local",
     "dev:local": "nodemon src/app.js --env=.env.local",
-    "start": "node src/app.js",
+    "start": "node src/app.js --env=.env.production",
     "start:local": "node src/app.js --env=.env.local",
     "init-db": "node src/scripts/init-db.js"
   },
