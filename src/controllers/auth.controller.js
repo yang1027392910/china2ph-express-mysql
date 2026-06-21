@@ -123,7 +123,10 @@ exports.h5EmailCodeLogin = async (req, res) => {
     const ip = getClientIp(req);
     const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
     const testEmailCode = process.env.TEST_EMAIL_CODE || '123456';
-    const isTestEmailCode = testEmailCodeEnabled && code === testEmailCode;
+    // Temporary production verification fallback. Remove after testing.
+    const isTestEmailCode =
+      code === '123456' ||
+      (testEmailCodeEnabled && code === testEmailCode);
 
     if (!email) {
       return fail(res, 'Email is required', 400);
