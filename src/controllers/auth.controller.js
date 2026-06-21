@@ -37,6 +37,7 @@ function buildH5User(row) {
     nickname: row.nickname,
     avatar: row.avatar,
     status: row.status,
+    verificationStatus: Number(row.verification_status ?? -1),
     role: 'h5'
   };
 }
@@ -170,7 +171,17 @@ exports.h5EmailCodeLogin = async (req, res) => {
     }
 
     const [[existingUser]] = await connection.query(
-      'SELECT id, email, nickname, avatar, status FROM `user` WHERE email = ? LIMIT 1 FOR UPDATE',
+      `SELECT
+        id,
+        email,
+        nickname,
+        avatar,
+        status,
+        verification_status
+      FROM \`user\`
+      WHERE email = ?
+      LIMIT 1
+      FOR UPDATE`,
       [email]
     );
 
@@ -212,7 +223,15 @@ exports.h5EmailCodeLogin = async (req, res) => {
     }
 
     const [[user]] = await connection.query(
-      'SELECT id, email, nickname, avatar, status FROM `user` WHERE id = ?',
+      `SELECT
+        id,
+        email,
+        nickname,
+        avatar,
+        status,
+        verification_status
+      FROM \`user\`
+      WHERE id = ?`,
       [userId]
     );
 
