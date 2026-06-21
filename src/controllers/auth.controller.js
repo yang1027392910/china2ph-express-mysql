@@ -120,6 +120,9 @@ exports.h5EmailCodeLogin = async (req, res) => {
     const code = String(body.code || '').trim();
     const scene = String(body.scene || 'login').trim() || 'login';
     const ip = getClientIp(req);
+    const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
+    const testEmailCode = process.env.TEST_EMAIL_CODE || '123456';
+    const isTestEmailCode = testEmailCodeEnabled && code === testEmailCode;
 
     if (!email) {
       return fail(res, 'Email is required', 400);
@@ -142,22 +145,26 @@ exports.h5EmailCodeLogin = async (req, res) => {
       [email, scene]
     );
 
-    const [[codeLog]] = await connection.query(
-      `SELECT id
-      FROM email_code_log
-      WHERE email = ?
-        AND code = ?
-        AND scene = ?
-        AND status = 0
-        AND send_status = 1
-        AND expire_time > NOW()
-      ORDER BY id DESC
-      LIMIT 1
-      FOR UPDATE`,
-      [email, code, scene]
-    );
+    let codeLog = null;
 
-    if (!codeLog) {
+    if (!isTestEmailCode) {
+      [[codeLog]] = await connection.query(
+        `SELECT id
+        FROM email_code_log
+        WHERE email = ?
+          AND code = ?
+          AND scene = ?
+          AND status = 0
+          AND send_status = 1
+          AND expire_time > NOW()
+        ORDER BY id DESC
+        LIMIT 1
+        FOR UPDATE`,
+        [email, code, scene]
+      );
+    }
+
+    if (!isTestEmailCode && !codeLog) {
       await connection.rollback();
       return fail(res, 'Invalid or expired email code', 400);
     }
@@ -197,10 +204,12 @@ exports.h5EmailCodeLogin = async (req, res) => {
       );
     }
 
-    await connection.query(
-      'UPDATE email_code_log SET status = 1 WHERE id = ?',
-      [codeLog.id]
-    );
+    if (codeLog) {
+      await connection.query(
+        'UPDATE email_code_log SET status = 1 WHERE id = ?',
+        [codeLog.id]
+      );
+    }
 
     const [[user]] = await connection.query(
       'SELECT id, email, nickname, avatar, status FROM `user` WHERE id = ?',
