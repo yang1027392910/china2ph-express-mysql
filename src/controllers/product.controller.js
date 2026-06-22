@@ -119,6 +119,7 @@ function getProductListFilters(req, onlyEnabled = false) {
   const pageSize = Math.max(Number(req.query.pageSize || 10), 1);
   const offset = (page - 1) * pageSize;
   const categoryId = req.query.categoryId ?? req.query.category_id;
+  const title = req.query.title;
   const keyword = req.query.keyword;
   const status = req.query.status;
 
@@ -135,6 +136,11 @@ function getProductListFilters(req, onlyEnabled = false) {
   if (categoryId) {
     where.push('p.category_id = ?');
     params.push(Number(categoryId));
+  }
+
+  if (title) {
+    where.push('p.title LIKE ?');
+    params.push(`%${title}%`);
   }
 
   if (keyword) {
