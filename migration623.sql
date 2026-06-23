@@ -1,0 +1,14 @@
+CREATE TABLE home_navigation (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(50) NOT NULL COMMENT '标题',
+  `value` VARCHAR(50) NOT NULL COMMENT '显示数字',
+  icon VARCHAR(255) NOT NULL DEFAULT 'solar:clipboard-list-bold-duotone' COMMENT '图标名称',
+  sort INT DEFAULT 0 COMMENT '排序',
+  jump_type VARCHAR(30) DEFAULT NULL COMMENT '跳转类型',
+  jump_value VARCHAR(255) DEFAULT NULL COMMENT '跳转地址',
+  color VARCHAR(20) DEFAULT NULL COMMENT '图标颜色',
+  status TINYINT DEFAULT 1 COMMENT '状态：0禁用 1启用',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_status_sort (status, sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首页导航表';
