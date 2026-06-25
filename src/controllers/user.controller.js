@@ -1,5 +1,9 @@
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
+const {
+  ensureInviteSchema,
+  generateInviteCode
+} = require('../utils/invite');
 
 function getPagination(query) {
   const page = Math.max(Number(query.page || 1), 1);
@@ -41,6 +45,10 @@ function getUserSelectSql() {
     u.register_ip AS registerIp,
     u.last_login_ip AS lastLoginIp,
     u.login_count AS loginCount,
+    u.invite_code AS inviteCode,
+    u.inviter_id AS inviterId,
+    u.invite_count AS inviteCount,
+    u.can_lottery AS canLottery,
     u.created_at AS createdAt,
     u.updated_at AS updatedAt,
     u.last_login_time AS lastLoginTime
@@ -53,6 +61,7 @@ function pickBodyValue(body, camelKey, snakeKey) {
 
 exports.adminList = async (req, res) => {
   try {
+    await ensureInviteSchema(pool);
     const { page, pageSize, offset } = getPagination(req.query);
     const { whereSql, params } = buildUserWhere(req.query);
 
@@ -83,6 +92,7 @@ exports.adminList = async (req, res) => {
 
 exports.adminDetail = async (req, res) => {
   try {
+    await ensureInviteSchema(pool);
     const id = Number(req.params.id || req.query.id);
 
     if (!id) {
@@ -112,6 +122,7 @@ exports.adminCreate = async (req, res) => {
     const nickname = String(body.nickname || '').trim();
     const avatar = body.avatar === undefined || body.avatar === null ? '' : String(body.avatar);
     const status = body.status === undefined || body.status === '' ? 1 : Number(body.status);
+    const canLottery = body.canLottery ?? body.can_lottery;
     const registerIp = pickBodyValue(body, 'registerIp', 'register_ip') ||
       req.headers['x-forwarded-for'] ||
       req.socket?.remoteAddress ||
@@ -130,12 +141,23 @@ exports.adminCreate = async (req, res) => {
       return fail(res, 'User email already exists', 400);
     }
 
+    await ensureInviteSchema(pool);
+    const inviteCode = await generateInviteCode(pool);
+
     const [result] = await pool.query(
       `INSERT INTO \`user\`
-        (email, nickname, avatar, status, register_ip, login_count, created_at, updated_at)
+        (email, nickname, avatar, status, register_ip, login_count, invite_code, can_lottery, created_at, updated_at)
       VALUES
-        (?, ?, ?, ?, ?, 0, NOW(), NOW())`,
-      [email, nickname, avatar, status, String(registerIp)]
+        (?, ?, ?, ?, ?, 0, ?, ?, NOW(), NOW())`,
+      [
+        email,
+        nickname,
+        avatar,
+        status,
+        String(registerIp),
+        inviteCode,
+        canLottery === undefined || canLottery === '' ? 0 : Number(canLottery)
+      ]
     );
 
     const id = result.insertId;
@@ -153,6 +175,7 @@ exports.adminCreate = async (req, res) => {
 
 exports.adminUpdate = async (req, res) => {
   try {
+    await ensureInviteSchema(pool);
     const body = req.body || {};
     const id = Number(body.id ?? req.params.id);
 
@@ -166,7 +189,8 @@ exports.adminUpdate = async (req, res) => {
       ['email', 'email'],
       ['nickname', 'nickname'],
       ['avatar', 'avatar'],
-      ['status', 'status']
+      ['status', 'status'],
+      ['canLottery', 'can_lottery']
     ];
 
     for (const [camelKey, column] of updateMap) {
@@ -174,7 +198,7 @@ exports.adminUpdate = async (req, res) => {
 
       if (value !== undefined) {
         fields.push(`${column} = ?`);
-        params.push(column === 'status' ? Number(value) : String(value));
+        params.push(['status', 'can_lottery'].includes(column) ? Number(value) : String(value));
       }
     }
 

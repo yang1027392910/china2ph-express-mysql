@@ -1,6 +1,11 @@
 const authService = require('../services/auth.service');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
+const {
+  ensureInviteSchema,
+  findInviterByCode,
+  generateInviteCode
+} = require('../utils/invite');
 
 function buildLoginData(user) {
   const token = authService.generateToken(user);
@@ -38,6 +43,10 @@ function buildH5User(row) {
     avatar: row.avatar,
     status: row.status,
     verificationStatus: Number(row.verification_status ?? -1),
+    inviteCode: row.invite_code || null,
+    inviterId: row.inviter_id === null || row.inviter_id === undefined ? null : Number(row.inviter_id),
+    inviteCount: Number(row.invite_count || 0),
+    canLottery: Number(row.can_lottery || 0),
     role: 'h5'
   };
 }
@@ -119,6 +128,7 @@ exports.h5EmailCodeLogin = async (req, res) => {
     const body = req.body || {};
     const email = String(body.email || '').trim();
     const code = String(body.code || '').trim();
+    const requestInviteCode = String(body.inviteCode || body.invite_code || '').trim();
     const scene = String(body.scene || 'login').trim() || 'login';
     const ip = getClientIp(req);
     const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
@@ -140,6 +150,7 @@ exports.h5EmailCodeLogin = async (req, res) => {
       return fail(res, 'Email code is required', 400);
     }
 
+    await ensureInviteSchema(pool);
     await connection.beginTransaction();
 
     await connection.query(
@@ -180,7 +191,11 @@ exports.h5EmailCodeLogin = async (req, res) => {
         nickname,
         avatar,
         status,
-        verification_status
+        verification_status,
+        invite_code,
+        inviter_id,
+        invite_count,
+        can_lottery
       FROM \`user\`
       WHERE email = ?
       LIMIT 1
@@ -193,16 +208,21 @@ exports.h5EmailCodeLogin = async (req, res) => {
       return fail(res, 'User is disabled', 403);
     }
 
+    const newLogin = !existingUser;
     let userId = existingUser?.id;
 
     if (!userId) {
       const nickname = email.split('@')[0];
+      const ownInviteCode = await generateInviteCode(connection);
+      const inviter = await findInviterByCode(connection, requestInviteCode);
+
+      // 只有新注册用户才允许绑定邀请人，老用户登录不会修改 inviter_id。
       const [result] = await connection.query(
         `INSERT INTO \`user\`
-          (email, nickname, avatar, status, register_ip, last_login_ip, login_count, last_login_time, created_at, updated_at)
+          (email, nickname, avatar, status, register_ip, last_login_ip, login_count, last_login_time, invite_code, inviter_id, created_at, updated_at)
         VALUES
-          (?, ?, '', 1, ?, ?, 1, NOW(), NOW(), NOW())`,
-        [email, nickname, ip, ip]
+          (?, ?, '', 1, ?, ?, 1, NOW(), ?, ?, NOW(), NOW())`,
+        [email, nickname, ip, ip, ownInviteCode, inviter?.id || null]
       );
 
       userId = result.insertId;
@@ -232,7 +252,11 @@ exports.h5EmailCodeLogin = async (req, res) => {
         nickname,
         avatar,
         status,
-        verification_status
+        verification_status,
+        invite_code,
+        inviter_id,
+        invite_count,
+        can_lottery
       FROM \`user\`
       WHERE id = ?`,
       [userId]
@@ -240,7 +264,11 @@ exports.h5EmailCodeLogin = async (req, res) => {
 
     await connection.commit();
 
-    success(res, buildLoginData(buildH5User(user)));
+    success(res, {
+      ...buildLoginData(buildH5User(user)),
+      newLogin,
+      isNewUser: newLogin
+    });
   } catch (error) {
     await connection.rollback();
     console.error(error);

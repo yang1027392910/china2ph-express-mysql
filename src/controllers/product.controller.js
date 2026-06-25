@@ -122,9 +122,11 @@ function getProductListFilters(req, onlyEnabled = false) {
   const title = req.query.title;
   const keyword = req.query.keyword;
   const status = req.query.status;
+  const hotType = req.query.hotType ?? req.query.hot_type;
 
   const where = [];
   const params = [];
+  const hotProductStatusSql = onlyEnabled ? ' AND h.status = 1' : '';
 
   if (onlyEnabled) {
     where.push('p.status = 1');
@@ -148,6 +150,16 @@ function getProductListFilters(req, onlyEnabled = false) {
     params.push(`%${keyword}%`, `%${keyword}%`);
   }
 
+  if (hotType) {
+    where.push(`EXISTS (
+      SELECT 1
+      FROM hot_product h
+      WHERE h.product_id = p.id
+        AND h.hot_type = ?${hotProductStatusSql}
+    )`);
+    params.push(String(hotType));
+  }
+
   return {
     page,
     pageSize,
@@ -161,6 +173,7 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
   try {
     const { page, pageSize, offset, whereSql, params } = getProductListFilters(req, onlyEnabled);
     const userId = Number(req.user?.id || 0);
+    const hotProductStatusSql = onlyEnabled ? ' AND h.status = 1' : '';
 
     const [[countRow]] = await pool.query(
       `SELECT COUNT(*) AS total FROM productlist p ${whereSql}`,
@@ -189,6 +202,18 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
         p.supplier_whatsapp AS supplierWhatsapp,
         p.supplier_wechat AS supplierWechat,
         p.supplier_phone AS supplierPhone,
+        (
+          SELECT h.hot_type
+          FROM hot_product h
+          WHERE h.product_id = p.id${hotProductStatusSql}
+          ORDER BY h.sort ASC, h.id DESC
+          LIMIT 1
+        ) AS hotType,
+        (
+          SELECT GROUP_CONCAT(h.hot_type ORDER BY h.sort ASC, h.id DESC SEPARATOR ',')
+          FROM hot_product h
+          WHERE h.product_id = p.id${hotProductStatusSql}
+        ) AS hotTypes,
         p.created_at AS createdAt,
         IF(f.product_id IS NULL, 0, 1) AS isFavorite
       FROM productlist p

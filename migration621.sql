@@ -11,6 +11,7 @@ CREATE TABLE user_verification (
   store_description TEXT COMMENT '主营产品',
   store_photos JSON COMMENT '店铺照片',
   status TINYINT DEFAULT 0 COMMENT '0待审核 1通过 2拒绝',
+  invite_counted TINYINT(1) DEFAULT 0 COMMENT '是否已计算邀请人数',
   remark VARCHAR(255) DEFAULT NULL COMMENT '审核备注',
   reviewed_at DATETIME DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

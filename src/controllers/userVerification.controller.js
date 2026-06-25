@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
+const { ensureInviteSchema } = require('../utils/invite');
 
 function getPagination(query) {
   const page = Math.max(Number(query.page || 1), 1);
@@ -55,6 +56,8 @@ function getSelectSql() {
     uv.reviewed_at AS reviewedAt,
     uv.created_at AS createdAt,
     uv.updated_at AS updatedAt,
+    COALESCE(u.email, uv.email) AS user_name,
+    COALESCE(u.email, uv.email) AS userName,
     u.nickname AS userNickname
   FROM user_verification uv
   LEFT JOIN \`user\` u ON u.id = uv.user_id`;
@@ -105,10 +108,13 @@ async function reviewVerification(req, res, status, successMessage) {
       return fail(res, 'User verification id is required', 400);
     }
 
+    await ensureInviteSchema(pool);
     await connection.beginTransaction();
 
     const [[verification]] = await connection.query(
-      `SELECT id, user_id AS userId
+      `SELECT id,
+        user_id AS userId,
+        invite_counted AS inviteCounted
       FROM user_verification
       WHERE id = ?
       LIMIT 1
@@ -120,6 +126,17 @@ async function reviewVerification(req, res, status, successMessage) {
       await connection.rollback();
       return fail(res, 'User verification not found', 404);
     }
+
+    const [[reviewedUser]] = await connection.query(
+      `SELECT id,
+        verification_status AS verificationStatus,
+        inviter_id AS inviterId
+      FROM \`user\`
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE`,
+      [verification.userId]
+    );
 
     await connection.query(
       `UPDATE user_verification
@@ -137,6 +154,31 @@ async function reviewVerification(req, res, status, successMessage) {
       WHERE id = ?`,
       [status, verification.userId]
     );
+
+    if (
+      status === 1 &&
+      reviewedUser &&
+      Number(reviewedUser.verificationStatus) !== 1 &&
+      Number(verification.inviteCounted || 0) !== 1 &&
+      reviewedUser.inviterId
+    ) {
+      // 只有被邀请用户首次从非通过变成通过时，才给邀请人增加一次有效邀请。
+      await connection.query(
+        `UPDATE \`user\`
+        SET invite_count = invite_count + 1,
+          can_lottery = IF(invite_count + 1 >= 3, 1, can_lottery),
+          updated_at = NOW()
+        WHERE id = ?`,
+        [reviewedUser.inviterId]
+      );
+
+      await connection.query(
+        `UPDATE user_verification
+        SET invite_counted = 1
+        WHERE id = ?`,
+        [id]
+      );
+    }
 
     const [[reviewedVerification]] = await connection.query(
       `${getSelectSql()} WHERE uv.id = ?`,
