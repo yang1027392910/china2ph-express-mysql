@@ -14,6 +14,18 @@ function getEmailFrom() {
   return process.env.EMAIL_FROM || DEFAULT_FROM;
 }
 
+function buildEmailErrorMessage(error) {
+  if (!error) {
+    return 'Failed to send verification email';
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return error.message || error.name || JSON.stringify(error);
+}
+
 function isDevelopmentWithoutApiKey() {
   return process.env.NODE_ENV === 'development' && !process.env.RESEND_API_KEY;
 }
@@ -61,7 +73,14 @@ async function sendVerificationCodeEmail(email, code) {
   });
 
   if (error) {
-    throw new Error(error.message || 'Failed to send verification email');
+    console.error('[YiwuHub] Resend email error:', {
+      name: error.name,
+      message: error.message,
+      statusCode: error.statusCode,
+      error
+    });
+
+    throw new Error(buildEmailErrorMessage(error));
   }
 
   console.log(`[YiwuHub] Verification email accepted by Resend. id=${data?.id || 'unknown'} to=${email}`);

@@ -127,7 +127,10 @@ exports.sendEmailCode = async (req, res) => {
         });
       }
     } catch (sendError) {
-      console.error(sendError);
+      console.error('[YiwuHub] Failed to send verification code email:', {
+        message: sendError.message,
+        stack: sendError.stack
+      });
       await pool.query(
         'UPDATE email_code_log SET send_status = 0 WHERE id = ?',
         [result.insertId]
