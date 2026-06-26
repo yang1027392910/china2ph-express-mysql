@@ -191,6 +191,107 @@ exports.adminCreate = async (req, res) => {
   }
 };
 
+exports.adminUpdate = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = Number(body.id ?? req.params.id);
+
+    if (!id) {
+      return fail(res, 'Banner id is required', 400);
+    }
+
+    const fields = [];
+    const params = [];
+
+    if (body.title !== undefined) {
+      const title = normalizeTextValue(body.title).trim();
+      if (!title) return fail(res, 'Banner title is required', 400);
+      fields.push('title = ?');
+      params.push(title);
+    }
+
+    if (body.subtitle !== undefined) {
+      fields.push('subtitle = ?');
+      params.push(normalizeNullableTextValue(body.subtitle));
+    }
+
+    if (body.image !== undefined) {
+      const image = normalizeTextValue(body.image).trim();
+      if (!image) return fail(res, 'Banner image is required', 400);
+      fields.push('image = ?');
+      params.push(image);
+    }
+
+    if (body.scene !== undefined) {
+      fields.push('scene = ?');
+      params.push(normalizeTextValue(body.scene, 'home').trim() || 'home');
+    }
+
+    const actionType = body.actionType ?? body.jumpType ?? body.action_type;
+    if (actionType !== undefined) {
+      const normalizedActionType = normalizeTextValue(actionType).trim();
+      if (!normalizedActionType) return fail(res, 'Banner action type is required', 400);
+      fields.push('action_type = ?');
+      params.push(normalizedActionType);
+    }
+
+    const actionValue = body.actionValue ?? body.jumpValue ?? body.action_value;
+    if (actionValue !== undefined) {
+      fields.push('action_value = ?');
+      params.push(normalizeNullableTextValue(actionValue));
+    }
+
+    if (body.sort !== undefined) {
+      fields.push('sort = ?');
+      params.push(normalizeNumberValue(body.sort));
+    }
+
+    if (body.status !== undefined) {
+      fields.push('status = ?');
+      params.push(normalizeNumberValue(body.status, 1));
+    }
+
+    const startTime = pickBodyValue(body, 'startTime', 'start_time');
+    if (startTime !== undefined) {
+      fields.push('start_time = ?');
+      params.push(normalizeNullableTextValue(startTime));
+    }
+
+    const endTime = pickBodyValue(body, 'endTime', 'end_time');
+    if (endTime !== undefined) {
+      fields.push('end_time = ?');
+      params.push(normalizeNullableTextValue(endTime));
+    }
+
+    if (!fields.length) {
+      return fail(res, 'No banner fields to update', 400);
+    }
+
+    params.push(id);
+
+    const [result] = await pool.query(
+      `UPDATE banner
+      SET ${fields.join(', ')}, updated_at = NOW()
+      WHERE id = ?`,
+      params
+    );
+
+    if (!result.affectedRows) {
+      return fail(res, 'Banner not found', 404);
+    }
+
+    const [[updated]] = await pool.query(
+      `${getBannerSelectSql()} WHERE b.id = ?`,
+      [id]
+    );
+
+    success(res, updated, 'updated');
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to update admin banner');
+  }
+};
+
 exports.adminDelete = async (req, res) => {
   try {
     const id = Number(req.body?.id ?? req.query.id ?? req.params.id);

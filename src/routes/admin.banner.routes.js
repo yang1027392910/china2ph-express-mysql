@@ -15,6 +15,8 @@ function noCache(req, res, next) {
 
 router.get('/list', noCache, adminAuth, bannerController.adminList);
 router.post('/list/created', noCache, adminAuth, bannerController.adminCreate);
+router.post('/list/update', noCache, adminAuth, bannerController.adminUpdate);
+router.put('/list/:id', noCache, adminAuth, bannerController.adminUpdate);
 router.post('/list/dele', noCache, adminAuth, bannerController.adminDelete);
 router.delete('/list/dele/:id', noCache, adminAuth, bannerController.adminDelete);
 
