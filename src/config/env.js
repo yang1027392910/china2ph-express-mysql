@@ -16,3 +16,11 @@ if (overrideFile) {
   });
 }
 
+if (!process.env.NODE_ENV) {
+  if (overrideFile === '.env.production') {
+    process.env.NODE_ENV = 'production';
+  } else if (overrideFile === '.env.local') {
+    process.env.NODE_ENV = 'development';
+  }
+}
+

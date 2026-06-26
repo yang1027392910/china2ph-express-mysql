@@ -2,6 +2,10 @@ const authService = require('../services/auth.service');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 const {
+  getExpireMinutes,
+  sendVerificationCodeEmail
+} = require('../utils/email');
+const {
   ensureInviteSchema,
   findInviterByCode,
   generateInviteCode
@@ -56,7 +60,8 @@ exports.sendEmailCode = async (req, res) => {
     const body = req.body || {};
     const email = String(body.email || '').trim();
     const scene = String(body.scene || 'login').trim() || 'login';
-    const expireMinutes = Math.max(Number(body.expireMinutes || 5), 1);
+    const expireMinutes = getExpireMinutes();
+    const ip = getClientIp(req);
 
     if (!email) {
       return fail(res, 'Email is required', 400);
@@ -76,48 +81,77 @@ exports.sendEmailCode = async (req, res) => {
     const [[recentLog]] = await pool.query(
       `SELECT id
       FROM email_code_log
-      WHERE email = ? AND scene = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND)
+      WHERE email = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND)
       ORDER BY id DESC
       LIMIT 1`,
-      [email, scene]
+      [email]
     );
 
     if (recentLog) {
-      return fail(res, 'Please request again later', 429);
+      return fail(res, 'Please wait 60 seconds before requesting another verification code', 429);
+    }
+
+    const [[ipHourlyLog]] = await pool.query(
+      `SELECT COUNT(*) AS total
+      FROM email_code_log
+      WHERE ip = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+      [ip]
+    );
+
+    if (Number(ipHourlyLog.total || 0) >= 20) {
+      return fail(res, 'Too many verification code requests from this IP. Please try again later', 429);
     }
 
     const code = generateEmailCode();
-    const ip = getClientIp(req);
 
     const [result] = await pool.query(
       `INSERT INTO email_code_log
         (email, code, scene, status, send_status, expire_time, ip)
       VALUES
-        (?, ?, ?, 0, 1, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?)`,
+        (?, ?, ?, 0, 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?)`,
       [email, code, scene, expireMinutes, ip]
     );
 
-    const [[log]] = await pool.query(
-      `SELECT
-        id,
-        email,
-        scene,
-        status,
-        send_status AS sendStatus,
-        expire_time AS expireTime,
-        created_at AS createdAt
-      FROM email_code_log
-      WHERE id = ?`,
-      [result.insertId]
-    );
+    try {
+      const emailResult = await sendVerificationCodeEmail(email, code);
+      await pool.query(
+        'UPDATE email_code_log SET send_status = 1 WHERE id = ?',
+        [result.insertId]
+      );
 
-    success(res, {
-      ...log,
-      code
-    }, 'sent');
+      if (emailResult?.delivery === 'console') {
+        return res.json({
+          code: 200,
+          message: 'Verification code printed in server console',
+          delivery: 'console'
+        });
+      }
+    } catch (sendError) {
+      console.error(sendError);
+      await pool.query(
+        'UPDATE email_code_log SET send_status = 0 WHERE id = ?',
+        [result.insertId]
+      );
+
+      return res.status(500).json({
+        code: 500,
+        message: 'Failed to send verification code',
+        data: null
+      });
+    }
+
+    res.json({
+      code: 200,
+      message: 'Verification code sent',
+      delivery: 'resend'
+    });
   } catch (error) {
     console.error(error);
-    fail(res, 'Failed to send email code');
+    res.status(500).json({
+      code: 500,
+      message: 'Failed to send verification code',
+      data: null
+    });
   }
 };
 
