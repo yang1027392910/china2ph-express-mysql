@@ -169,11 +169,11 @@ exports.h5EmailCodeLogin = async (req, res) => {
     const scene = String(body.scene || 'login').trim() || 'login';
     const ip = getClientIp(req);
     const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
-    const testEmailCode = process.env.TEST_EMAIL_CODE || '123456';
-    // Temporary production verification fallback. Remove after testing.
+    const testEmailCode = process.env.TEST_EMAIL_CODE;
     const isTestEmailCode =
-      code === '123456' ||
-      (testEmailCodeEnabled && code === testEmailCode);
+      testEmailCodeEnabled &&
+      Boolean(testEmailCode) &&
+      code === testEmailCode;
 
     if (!email) {
       return fail(res, 'Email is required', 400);
