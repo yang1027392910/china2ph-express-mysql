@@ -103,6 +103,8 @@ exports.sendEmailCode = async (req, res) => {
     }
 
     const code = generateEmailCode();
+    const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
+    const testEmailCode = process.env.TEST_EMAIL_CODE;
 
     const [result] = await pool.query(
       `INSERT INTO email_code_log
@@ -111,6 +113,19 @@ exports.sendEmailCode = async (req, res) => {
         (?, ?, ?, 0, 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?)`,
       [email, code, scene, expireMinutes, ip]
     );
+
+    if (testEmailCodeEnabled && testEmailCode) {
+      await pool.query(
+        'UPDATE email_code_log SET send_status = 1 WHERE id = ?',
+        [result.insertId]
+      );
+
+      return res.json({
+        code: 200,
+        message: 'Test verification code enabled',
+        delivery: 'test'
+      });
+    }
 
     try {
       const emailResult = await sendVerificationCodeEmail(email, code);
