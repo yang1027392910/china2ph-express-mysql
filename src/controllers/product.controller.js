@@ -624,3 +624,78 @@ exports.adminProductUpdate = async (req, res) => {
     fail(res, 'Failed to update admin product');
   }
 };
+
+exports.adminProductDelete = async (req, res) => {
+  const connection = await pool.getConnection();
+
+  try {
+    const body = req.body || {};
+    const id = normalizeNumberValue(body.id ?? req.params.id);
+
+    if (!id) {
+      connection.release();
+      return fail(res, 'Product id is required', 400);
+    }
+
+    await connection.beginTransaction();
+
+    const [[product]] = await connection.query(
+      'SELECT id FROM productlist WHERE id = ? LIMIT 1',
+      [id]
+    );
+
+    if (!product) {
+      await connection.rollback();
+      connection.release();
+      return fail(res, 'Product not found', 404);
+    }
+
+    const [hotProductResult] = await connection.query(
+      'DELETE FROM hot_product WHERE product_id = ?',
+      [id]
+    );
+    const [favoriteResult] = await connection.query(
+      'DELETE FROM favorite WHERE product_id = ?',
+      [id]
+    );
+    let contactPermissionDeleted = 0;
+    try {
+      const [permissionResult] = await connection.query(
+        'DELETE FROM product_contact_permission WHERE product_id = ?',
+        [id]
+      );
+      contactPermissionDeleted = permissionResult.affectedRows;
+    } catch (permissionError) {
+      if (permissionError.code !== 'ER_NO_SUCH_TABLE') {
+        throw permissionError;
+      }
+    }
+    const [homeHotProductResult] = await connection.query(
+      'DELETE FROM home_hot_product WHERE product_id = ?',
+      [id]
+    );
+    const [productResult] = await connection.query(
+      'DELETE FROM productlist WHERE id = ?',
+      [id]
+    );
+
+    await connection.commit();
+    connection.release();
+
+    success(res, {
+      id,
+      deleted: productResult.affectedRows,
+      relatedDeleted: {
+        hotProducts: hotProductResult.affectedRows,
+        favorites: favoriteResult.affectedRows,
+        contactPermissions: contactPermissionDeleted,
+        homeHotProducts: homeHotProductResult.affectedRows
+      }
+    }, 'deleted');
+  } catch (error) {
+    await connection.rollback();
+    connection.release();
+    console.error(error);
+    fail(res, 'Failed to delete admin product');
+  }
+};
