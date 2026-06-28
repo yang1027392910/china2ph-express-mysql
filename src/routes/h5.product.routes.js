@@ -14,5 +14,6 @@ function noCache(req, res, next) {
 }
 
 router.get('/list', noCache, optionalAuth, productController.h5ProductList);
+router.get('/detail/:id', noCache, optionalAuth, productController.h5ProductDetail);
 
 module.exports = router;

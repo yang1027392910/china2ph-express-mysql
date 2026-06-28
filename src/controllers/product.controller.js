@@ -281,6 +281,94 @@ exports.h5ProductList = async (req, res) => {
   await queryProductList(req, res, true, 'Failed to get h5 product list');
 };
 
+exports.h5ProductDetail = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!id) {
+      return fail(res, 'Product id is required', 400);
+    }
+
+    const userId = Number(req.user?.id || 0);
+    const [[product]] = await pool.query(
+      `SELECT
+        p.id,
+        p.category_id AS categoryId,
+        c.name AS categoryName,
+        p.title,
+        p.subtitle,
+        p.cover,
+        p.images,
+        p.description,
+        p.china_price AS chinaPrice,
+        p.shipping_fee AS shippingFee,
+        p.ph_price AS phPrice,
+        p.profit,
+        p.minimum_order_quantity AS minimumOrderQuantity,
+        p.stock,
+        p.sales,
+        p.status,
+        p.show_supplier_contact AS showSupplierContact,
+        p.supplier_name AS supplierName,
+        p.supplier_whatsapp AS supplierWhatsapp,
+        p.supplier_wechat AS supplierWechat,
+        p.supplier_phone AS supplierPhone,
+        (
+          SELECT h.hot_type
+          FROM hot_product h
+          WHERE h.product_id = p.id AND h.status = 1
+          ORDER BY h.sort ASC, h.id DESC
+          LIMIT 1
+        ) AS hotType,
+        (
+          SELECT GROUP_CONCAT(h.hot_type ORDER BY h.sort ASC, h.id DESC SEPARATOR ',')
+          FROM hot_product h
+          WHERE h.product_id = p.id AND h.status = 1
+        ) AS hotTypes,
+        p.created_at AS createdAt,
+        IF(f.product_id IS NULL, 0, 1) AS isFavorite
+      FROM productlist p
+      LEFT JOIN category c ON c.id = p.category_id
+      LEFT JOIN favorite f ON f.product_id = p.id AND f.user_id = ?
+      WHERE p.id = ? AND p.status = 1`,
+      [userId, id]
+    );
+
+    if (!product) {
+      return fail(res, 'Product not found', 404);
+    }
+
+    const authorizedProductIds = await permissionService.getAuthorizedProductIdSet(userId, [id]);
+    const canViewSupplierContact =
+      Number(product.showSupplierContact) === 1 &&
+      authorizedProductIds.has(id);
+
+    const {
+      supplierName,
+      supplierWhatsapp,
+      supplierWechat,
+      supplierPhone,
+      ...publicProduct
+    } = product;
+
+    success(res, {
+      ...publicProduct,
+      canViewSupplierContact,
+      supplierContact: canViewSupplierContact
+        ? {
+            name: supplierName,
+            whatsapp: supplierWhatsapp,
+            wechat: supplierWechat,
+            phone: supplierPhone
+          }
+        : null
+    });
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to get h5 product detail');
+  }
+};
+
 function pickBodyValue(body, camelKey, snakeKey, defaultValue = undefined) {
   return body[camelKey] ?? body[snakeKey] ?? defaultValue;
 }
