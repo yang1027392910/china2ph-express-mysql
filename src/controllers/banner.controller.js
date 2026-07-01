@@ -23,6 +23,47 @@ function normalizeNullableTextValue(value) {
   return String(value);
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatDateTime(date) {
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate())
+  ].join('-') + ' ' + [
+    padDatePart(date.getHours()),
+    padDatePart(date.getMinutes()),
+    padDatePart(date.getSeconds())
+  ].join(':');
+}
+
+function normalizeDateTimeValue(value) {
+  if (value === undefined || value === null || value === '') return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value);
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const mysqlDateTimeMatch = text.match(
+    /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2})(?::(\d{2}))?)?$/
+  );
+  if (mysqlDateTimeMatch) {
+    const [, datePart, minutePart, secondPart] = mysqlDateTimeMatch;
+    if (!minutePart) return `${datePart} 00:00:00`;
+    return `${datePart} ${minutePart}:${secondPart || '00'}`;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+
+  return formatDateTime(parsed);
+}
+
 function normalizeNumberValue(value, defaultValue = 0) {
   if (value === undefined || value === null || value === '') return defaultValue;
   return Number(value);
@@ -145,6 +186,17 @@ exports.adminCreate = async (req, res) => {
       return fail(res, 'Banner action type is required', 400);
     }
 
+    const startTime = normalizeDateTimeValue(pickBodyValue(body, 'startTime', 'start_time'));
+    const endTime = normalizeDateTimeValue(pickBodyValue(body, 'endTime', 'end_time'));
+
+    if (startTime === undefined) {
+      return fail(res, 'Banner start time is invalid', 400);
+    }
+
+    if (endTime === undefined) {
+      return fail(res, 'Banner end time is invalid', 400);
+    }
+
     const banner = {
       title,
       subtitle: normalizeNullableTextValue(body.subtitle),
@@ -156,8 +208,8 @@ exports.adminCreate = async (req, res) => {
       ),
       sort: normalizeNumberValue(body.sort),
       status: normalizeNumberValue(body.status, 1),
-      start_time: normalizeNullableTextValue(pickBodyValue(body, 'startTime', 'start_time')),
-      end_time: normalizeNullableTextValue(pickBodyValue(body, 'endTime', 'end_time'))
+      start_time: startTime,
+      end_time: endTime
     };
 
     const [result] = await pool.query(
@@ -253,14 +305,22 @@ exports.adminUpdate = async (req, res) => {
 
     const startTime = pickBodyValue(body, 'startTime', 'start_time');
     if (startTime !== undefined) {
+      const normalizedStartTime = normalizeDateTimeValue(startTime);
+      if (normalizedStartTime === undefined) {
+        return fail(res, 'Banner start time is invalid', 400);
+      }
       fields.push('start_time = ?');
-      params.push(normalizeNullableTextValue(startTime));
+      params.push(normalizedStartTime);
     }
 
     const endTime = pickBodyValue(body, 'endTime', 'end_time');
     if (endTime !== undefined) {
+      const normalizedEndTime = normalizeDateTimeValue(endTime);
+      if (normalizedEndTime === undefined) {
+        return fail(res, 'Banner end time is invalid', 400);
+      }
       fields.push('end_time = ?');
-      params.push(normalizeNullableTextValue(endTime));
+      params.push(normalizedEndTime);
     }
 
     if (!fields.length) {
