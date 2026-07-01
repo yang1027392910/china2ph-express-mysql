@@ -9,6 +9,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'yiwu_ph_platform',
   waitForConnections: true,
   connectionLimit: 10,
+  dateStrings: true,
   charset: 'utf8mb4'
 });
 
