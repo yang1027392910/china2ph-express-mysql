@@ -53,7 +53,8 @@ async function queryCategoryProducts(userId, limit = 3) {
   const [categories] = await pool.query(
     `SELECT
       id,
-      name
+      name,
+      alice
     FROM category
     WHERE parent_id = 0 AND status = 1
     ORDER BY sort ASC, id ASC`
@@ -107,6 +108,7 @@ async function queryCategoryProducts(userId, limit = 3) {
     return {
       categoryId: category.id,
       categoryName: category.name,
+      alice: category.alice || '',
       products
     };
   }));

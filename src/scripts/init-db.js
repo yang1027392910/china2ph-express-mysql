@@ -5,6 +5,7 @@ async function main() {
     `CREATE TABLE IF NOT EXISTS category (
       id BIGINT PRIMARY KEY AUTO_INCREMENT,
       name VARCHAR(100) NOT NULL,
+      alice VARCHAR(100) DEFAULT '',
       icon VARCHAR(255),
       parent_id BIGINT DEFAULT 0,
       sort INT DEFAULT 0,
@@ -190,26 +191,26 @@ async function main() {
   await pool.query('DELETE FROM category');
 
   const categories = [
-    [1, 'Women Wear', 'women-wear', 0, 1],
-    [2, 'Men Wear', 'men-wear', 0, 2],
-    [3, 'Shoes', 'shoes', 0, 3],
-    [4, 'Bags', 'bags', 0, 4],
-    [5, 'Beauty', 'beauty', 0, 5],
-    [6, 'Jewelry', 'jewelry', 0, 6],
-    [7, 'Kids & Baby', 'kids-baby', 0, 7],
-    [8, 'Home & Living', 'home-living', 0, 8],
-    [9, 'Toys', 'toys', 0, 9],
-    [10, 'Stationery', 'stationery', 0, 10],
-    [11, 'Electronics', 'electronics', 0, 11],
-    [12, 'Sports', 'sports', 0, 12],
-    [13, 'Automotive', 'automotive', 0, 13],
-    [14, 'Pet Supplies', 'pet-supplies', 0, 14],
-    [15, 'Food', 'food', 0, 15],
-    [16, 'Others', 'others', 0, 16]
+    [1, 'Women Wear', 'women-wear', 'women-wear', 0, 1],
+    [2, 'Men Wear', 'men-wear', 'men-wear', 0, 2],
+    [3, 'Shoes', 'shoes', 'shoes', 0, 3],
+    [4, 'Bags', 'bags', 'bags', 0, 4],
+    [5, 'Beauty', 'beauty', 'beauty', 0, 5],
+    [6, 'Jewelry', 'jewelry', 'jewelry', 0, 6],
+    [7, 'Kids & Baby', 'kids-baby', 'kids-baby', 0, 7],
+    [8, 'Home & Living', 'home-living', 'home-living', 0, 8],
+    [9, 'Toys', 'toys', 'toys', 0, 9],
+    [10, 'Stationery', 'stationery', 'stationery', 0, 10],
+    [11, 'Electronics', 'electronics', 'electronics', 0, 11],
+    [12, 'Sports', 'sports', 'sports', 0, 12],
+    [13, 'Automotive', 'automotive', 'automotive', 0, 13],
+    [14, 'Pet Supplies', 'pet-supplies', 'pet-supplies', 0, 14],
+    [15, 'Food', 'food', 'food', 0, 15],
+    [16, 'Others', 'others', 'others', 0, 16]
   ];
 
   await pool.query(
-    'INSERT INTO category (id, name, icon, parent_id, sort) VALUES ?',
+    'INSERT INTO category (id, name, alice, icon, parent_id, sort) VALUES ?',
     [categories]
   );
 

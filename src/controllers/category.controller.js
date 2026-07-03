@@ -1,12 +1,37 @@
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 
+let categorySchemaReady;
+
+async function ensureCategorySchema() {
+  if (!categorySchemaReady) {
+    categorySchemaReady = (async () => {
+      const [aliceColumns] = await pool.query("SHOW COLUMNS FROM category LIKE 'alice'");
+
+      if (!aliceColumns.length) {
+        const [aliasColumns] = await pool.query("SHOW COLUMNS FROM category LIKE 'alias'");
+
+        if (aliasColumns.length) {
+          await pool.query("ALTER TABLE category CHANGE COLUMN alias alice VARCHAR(100) DEFAULT ''");
+        } else {
+          await pool.query("ALTER TABLE category ADD COLUMN alice VARCHAR(100) DEFAULT '' AFTER name");
+        }
+      }
+    })();
+  }
+
+  return categorySchemaReady;
+}
+
 exports.h5List = async (req, res) => {
   try {
+    await ensureCategorySchema();
+
     const [rows] = await pool.query(
       `SELECT
         id,
         name,
+        alice,
         icon,
         parent_id AS parentId,
         sort,
@@ -24,10 +49,14 @@ exports.h5List = async (req, res) => {
 
 exports.adminList = async (req, res) => {
   try {
+    await ensureCategorySchema();
+
     const [rows] = await pool.query(
       `SELECT
         id,
         name,
+        alice,
+        alice AS alias,
         icon,
         parent_id AS parentId,
         sort,
@@ -46,6 +75,8 @@ exports.adminCreate = async (req, res) => {
   try {
     const {
       name,
+      alias,
+      alice = '',
       icon = '',
       parent_id: parentIdInput,
       parentId,
@@ -53,10 +84,13 @@ exports.adminCreate = async (req, res) => {
       status: statusInput
     } = req.body;
 
+    await ensureCategorySchema();
+
     if (!name || !String(name).trim()) {
       return fail(res, 'Category name is required', 400);
     }
 
+    const normalizedAlice = String(alice ?? alias ?? '').trim();
     const parent_id = Number(parentIdInput ?? parentId ?? 0);
     const sort = Number(sortInput ?? 0);
     const status = Number(statusInput ?? 1);
@@ -68,14 +102,16 @@ exports.adminCreate = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO category
-        (id, name, icon, parent_id, sort, status)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, String(name).trim(), icon, parent_id, sort, status]
+        (id, name, alice, icon, parent_id, sort, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, String(name).trim(), normalizedAlice, icon, parent_id, sort, status]
     );
 
     success(res, {
       id: result.insertId || id,
       name: String(name).trim(),
+      alice: normalizedAlice,
+      alias: normalizedAlice,
       icon,
       parentId: parent_id,
       sort,
@@ -92,6 +128,8 @@ exports.adminUpdate = async (req, res) => {
     const body = req.body || {};
     const id = Number(body.id ?? req.params.id);
 
+    await ensureCategorySchema();
+
     if (!id) {
       return fail(res, 'Category id is required', 400);
     }
@@ -104,6 +142,12 @@ exports.adminUpdate = async (req, res) => {
       if (!name) return fail(res, 'Category name is required', 400);
       fields.push('name = ?');
       params.push(name);
+    }
+
+    const aliceInput = body.alice ?? body.alias;
+    if (aliceInput !== undefined) {
+      fields.push('alice = ?');
+      params.push(String(aliceInput ?? '').trim());
     }
 
     if (body.icon !== undefined) {
@@ -148,6 +192,8 @@ exports.adminUpdate = async (req, res) => {
       `SELECT
         id,
         name,
+        alice,
+        alice AS alias,
         icon,
         parent_id AS parentId,
         sort,
