@@ -87,6 +87,83 @@ exports.adminCreate = async (req, res) => {
   }
 };
 
+exports.adminUpdate = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = Number(body.id ?? req.params.id);
+
+    if (!id) {
+      return fail(res, 'Category id is required', 400);
+    }
+
+    const fields = [];
+    const params = [];
+
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name) return fail(res, 'Category name is required', 400);
+      fields.push('name = ?');
+      params.push(name);
+    }
+
+    if (body.icon !== undefined) {
+      fields.push('icon = ?');
+      params.push(String(body.icon ?? ''));
+    }
+
+    const parentIdInput = body.parentId ?? body.parent_id;
+    if (parentIdInput !== undefined) {
+      fields.push('parent_id = ?');
+      params.push(Number(parentIdInput));
+    }
+
+    if (body.sort !== undefined) {
+      fields.push('sort = ?');
+      params.push(Number(body.sort));
+    }
+
+    if (body.status !== undefined) {
+      fields.push('status = ?');
+      params.push(Number(body.status));
+    }
+
+    if (!fields.length) {
+      return fail(res, 'No category fields to update', 400);
+    }
+
+    params.push(id);
+
+    const [result] = await pool.query(
+      `UPDATE category
+      SET ${fields.join(', ')}
+      WHERE id = ?`,
+      params
+    );
+
+    if (!result.affectedRows) {
+      return fail(res, 'Category not found', 404);
+    }
+
+    const [[updated]] = await pool.query(
+      `SELECT
+        id,
+        name,
+        icon,
+        parent_id AS parentId,
+        sort,
+        status
+      FROM category
+      WHERE id = ?`,
+      [id]
+    );
+
+    success(res, updated, 'updated');
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to update category');
+  }
+};
+
 exports.adminDelete = async (req, res) => {
   try {
     const id = Number(req.body?.id ?? req.query.id ?? req.params.id);

@@ -118,7 +118,7 @@ function getProductListFilters(req, onlyEnabled = false) {
   const page = Math.max(Number(req.query.page || 1), 1);
   const pageSize = Math.max(Number(req.query.pageSize || 10), 1);
   const offset = (page - 1) * pageSize;
-  const categoryId = req.query.categoryId ?? req.query.category_id;
+  const categoryId = req.query.categoryId ?? req.query.category_id ?? req.query.category;
   const title = req.query.title;
   const keyword = req.query.keyword;
   const status = req.query.status;
@@ -184,6 +184,7 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
       `SELECT
         p.id,
         p.category_id AS categoryId,
+        c.name AS categoryName,
         p.title,
         p.subtitle,
         p.cover,
@@ -217,6 +218,7 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
         p.created_at AS createdAt,
         IF(f.product_id IS NULL, 0, 1) AS isFavorite
       FROM productlist p
+      LEFT JOIN category c ON c.id = p.category_id
       LEFT JOIN favorite f ON f.product_id = p.id AND f.user_id = ?
       ${whereSql}
       ORDER BY p.created_at DESC, p.id DESC
@@ -594,6 +596,7 @@ exports.adminProductUpdate = async (req, res) => {
       `SELECT
         p.id,
         p.category_id AS categoryId,
+        c.name AS categoryName,
         p.title,
         p.subtitle,
         p.cover,
@@ -614,6 +617,7 @@ exports.adminProductUpdate = async (req, res) => {
         p.supplier_phone AS supplierPhone,
         p.created_at AS createdAt
       FROM productlist p
+      LEFT JOIN category c ON c.id = p.category_id
       WHERE p.id = ?`,
       [id]
     );

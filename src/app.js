@@ -10,6 +10,7 @@ const h5LogisticsSupplierRoutes = require('./routes/h5.logisticsSupplier.routes'
 const h5SupplierRoutes = require('./routes/h5.supplier.routes');
 const h5FavoriteRoutes = require('./routes/h5.favorite.routes');
 const h5BannerRoutes = require('./routes/h5.banner.routes');
+const h5HomeRoutes = require('./routes/h5.home.routes');
 const h5HomeNavigationRoutes = require('./routes/h5.homeNavigation.routes');
 const h5ProcurementContactRoutes = require('./routes/h5.procurementContact.routes');
 const h5UserVerificationRoutes = require('./routes/h5.userVerification.routes');
@@ -51,6 +52,7 @@ app.use('/api/h5/logisticsSupplier', h5LogisticsSupplierRoutes);
 app.use('/api/h5/supplier', h5SupplierRoutes);
 app.use('/api/h5/favorite', h5FavoriteRoutes);
 app.use('/api/h5/banner', h5BannerRoutes);
+app.use('/api/h5/home', h5HomeRoutes);
 app.use('/api/h5/homeNavigation', h5HomeNavigationRoutes);
 app.use('/api/h5/procurement-contact', h5ProcurementContactRoutes);
 app.use('/api/h5/user', h5UserVerificationRoutes);
