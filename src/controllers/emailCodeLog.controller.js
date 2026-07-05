@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
+const { attachIpCity, lookupIpCity } = require('../services/ipLocation.service');
 
 function getPagination(query) {
   const page = Math.max(Number(query.page || 1), 1);
@@ -73,13 +74,14 @@ exports.adminList = async (req, res) => {
       params
     );
 
-    const [list] = await pool.query(
+    const [rows] = await pool.query(
       `${getEmailCodeLogSelectSql()}
       ${whereSql}
       ORDER BY l.created_at DESC, l.id DESC
       LIMIT ? OFFSET ?`,
       [...params, pageSize, offset]
     );
+    const list = await attachIpCity(rows);
 
     success(res, {
       total: countRow.total,
@@ -110,7 +112,10 @@ exports.adminDetail = async (req, res) => {
       return fail(res, 'Email code log not found', 404);
     }
 
-    success(res, log);
+    success(res, {
+      ...log,
+      city: await lookupIpCity(log.ip)
+    });
   } catch (error) {
     console.error(error);
     fail(res, 'Failed to get admin email code log detail');

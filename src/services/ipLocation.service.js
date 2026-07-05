@@ -64,20 +64,40 @@ async function lookupIpLocation(ipValue) {
 
   const cached = locationCache.get(ip);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+    return cached.value.location;
   }
 
   const data = await requestJson(`https://ipwho.is/${encodeURIComponent(ip)}`);
-  const value = data?.success === true
-    ? [data.country, data.region].filter(Boolean).join(', ')
-    : '';
+  const value = {
+    location: data?.success === true
+      ? [data.country, data.region].filter(Boolean).join(', ')
+      : '',
+    city: data?.success === true
+      ? [data.country, data.city].filter(Boolean).join(', ')
+      : ''
+  };
 
   locationCache.set(ip, {
     value,
     expiresAt: Date.now() + CACHE_TTL_MS
   });
 
-  return value;
+  return value.location;
+}
+
+async function lookupIpCity(ipValue) {
+  const ip = normalizeIp(ipValue);
+
+  if (!ip) return '';
+  if (isPrivateIp(ip)) return 'Local Network';
+
+  const cached = locationCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value.city;
+  }
+
+  await lookupIpLocation(ip);
+  return locationCache.get(ip)?.value.city || '';
 }
 
 async function attachIpLocation(users) {
@@ -102,8 +122,32 @@ async function attachIpLocation(users) {
   });
 }
 
+async function attachIpCity(rows, ipKey = 'ip') {
+  const uniqueIps = Array.from(new Set(
+    rows
+      .map(row => normalizeIp(row[ipKey]))
+      .filter(Boolean)
+  ));
+  const cityMap = new Map();
+
+  await Promise.all(uniqueIps.map(async (ip) => {
+    cityMap.set(ip, await lookupIpCity(ip));
+  }));
+
+  return rows.map(row => {
+    const ip = normalizeIp(row[ipKey]);
+
+    return {
+      ...row,
+      city: cityMap.get(ip) || ''
+    };
+  });
+}
+
 module.exports = {
+  attachIpCity,
   attachIpLocation,
+  lookupIpCity,
   lookupIpLocation,
   normalizeIp
 };
