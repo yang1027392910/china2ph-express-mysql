@@ -1,0 +1,1 @@
+ALTER TABLE email_code_log ADD COLUMN user_agent VARCHAR(500) DEFAULT NULL AFTER ip;

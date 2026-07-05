@@ -174,6 +174,7 @@ async function main() {
       send_status TINYINT DEFAULT 1 COMMENT '1成功 0失败',
       expire_time DATETIME,
       ip VARCHAR(50),
+      user_agent VARCHAR(500) DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_email_scene_status (email, scene, status),
       INDEX idx_expire_time (expire_time)

@@ -1,6 +1,8 @@
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 const { attachIpCity, lookupIpCity } = require('../services/ipLocation.service');
+const { detectDevice } = require('../services/device.service');
+const { ensureEmailCodeLogUserAgentSchema } = require('../services/emailCodeLogSchema.service');
 
 function getPagination(query) {
   const page = Math.max(Number(query.page || 1), 1);
@@ -60,12 +62,14 @@ function getEmailCodeLogSelectSql() {
     l.send_status AS sendStatus,
     l.expire_time AS expireTime,
     l.ip,
+    l.user_agent AS userAgent,
     l.created_at AS createdAt
   FROM email_code_log l`;
 }
 
 exports.adminList = async (req, res) => {
   try {
+    await ensureEmailCodeLogUserAgentSchema(pool);
     const { page, pageSize, offset } = getPagination(req.query);
     const { whereSql, params } = buildEmailCodeLogWhere(req.query);
 
@@ -81,7 +85,11 @@ exports.adminList = async (req, res) => {
       LIMIT ? OFFSET ?`,
       [...params, pageSize, offset]
     );
-    const list = await attachIpCity(rows);
+    const listWithCity = await attachIpCity(rows);
+    const list = listWithCity.map(log => ({
+      ...log,
+      device: detectDevice(log.userAgent)
+    }));
 
     success(res, {
       total: countRow.total,
@@ -97,6 +105,7 @@ exports.adminList = async (req, res) => {
 
 exports.adminDetail = async (req, res) => {
   try {
+    await ensureEmailCodeLogUserAgentSchema(pool);
     const id = Number(req.params.id || req.query.id);
 
     if (!id) {
@@ -114,7 +123,8 @@ exports.adminDetail = async (req, res) => {
 
     success(res, {
       ...log,
-      city: await lookupIpCity(log.ip)
+      city: await lookupIpCity(log.ip),
+      device: detectDevice(log.userAgent)
     });
   } catch (error) {
     console.error(error);

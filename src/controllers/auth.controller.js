@@ -10,6 +10,8 @@ const {
   findInviterByCode,
   generateInviteCode
 } = require('../utils/invite');
+const { getRequestUserAgent } = require('../services/device.service');
+const { ensureEmailCodeLogUserAgentSchema } = require('../services/emailCodeLogSchema.service');
 
 function buildLoginData(user) {
   const token = authService.generateToken(user);
@@ -62,6 +64,7 @@ exports.sendEmailCode = async (req, res) => {
     const scene = String(body.scene || 'login').trim() || 'login';
     const expireMinutes = getExpireMinutes();
     const ip = getClientIp(req);
+    const userAgent = getRequestUserAgent(req);
 
     if (!email) {
       return fail(res, 'Email is required', 400);
@@ -106,12 +109,14 @@ exports.sendEmailCode = async (req, res) => {
     const testEmailCodeEnabled = process.env.ENABLE_TEST_EMAIL_CODE === 'true';
     const testEmailCode = process.env.TEST_EMAIL_CODE;
 
+    await ensureEmailCodeLogUserAgentSchema(pool);
+
     const [result] = await pool.query(
       `INSERT INTO email_code_log
-        (email, code, scene, status, send_status, expire_time, ip)
+        (email, code, scene, status, send_status, expire_time, ip, user_agent)
       VALUES
-        (?, ?, ?, 0, 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?)`,
-      [email, code, scene, expireMinutes, ip]
+        (?, ?, ?, 0, 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), ?, ?)`,
+      [email, code, scene, expireMinutes, ip, userAgent]
     );
 
     if (testEmailCodeEnabled && testEmailCode) {
