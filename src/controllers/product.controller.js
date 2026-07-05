@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const permissionService = require('../services/productContactPermission.service');
+const productSearchService = require('../services/productSearch.service');
 const { success, fail } = require('../utils/response');
 
 exports.list = async (req, res) => {
@@ -281,6 +282,27 @@ exports.adminProductList = async (req, res) => {
 
 exports.h5ProductList = async (req, res) => {
   await queryProductList(req, res, true, 'Failed to get h5 product list');
+};
+
+exports.h5ProductSearch = async (req, res) => {
+  try {
+    const keyword = String(req.query.keyword || '').trim();
+
+    if (!keyword) {
+      return fail(res, 'Keyword is required', 400);
+    }
+
+    const data = await productSearchService.searchH5Products({
+      keyword,
+      page: req.query.page,
+      pageSize: req.query.pageSize
+    });
+
+    success(res, data);
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to search h5 products');
+  }
 };
 
 exports.h5ProductDetail = async (req, res) => {
