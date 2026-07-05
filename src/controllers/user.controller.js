@@ -4,6 +4,7 @@ const {
   ensureInviteSchema,
   generateInviteCode
 } = require('../utils/invite');
+const { attachIpLocation } = require('../services/ipLocation.service');
 
 function getPagination(query) {
   const page = Math.max(Number(query.page || 1), 1);
@@ -70,13 +71,14 @@ exports.adminList = async (req, res) => {
       params
     );
 
-    const [list] = await pool.query(
+    const [rows] = await pool.query(
       `${getUserSelectSql()}
       ${whereSql}
       ORDER BY u.created_at DESC, u.id DESC
       LIMIT ? OFFSET ?`,
       [...params, pageSize, offset]
     );
+    const list = await attachIpLocation(rows);
 
     success(res, {
       total: countRow.total,
