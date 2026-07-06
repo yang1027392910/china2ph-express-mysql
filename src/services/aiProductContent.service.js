@@ -48,6 +48,8 @@ Market: ${product.targetMarket}
 Language: ${product.language}
 
 JSON fields: seoTitle, metaDescription, descriptionHtml, faqHtml, seoKeywords, urlSlug.
+If information is not provided, do not output that field.
+Never output N/A, Unknown, or Not Available.
 
 descriptionHtml must use this exact section order and tags:
 <h3>📦 Product Overview</h3>
@@ -55,9 +57,9 @@ descriptionHtml must use this exact section order and tags:
 <hr>
 <h3>📋 Product Information</h3>
 <ul>
-<li><strong>Brand:</strong> write brand or N/A</li>
-<li><strong>Material:</strong> write material or N/A</li>
-<li><strong>Specification:</strong> write specification or N/A</li>
+<li><strong>Brand:</strong> output only if brand is known</li>
+<li><strong>Material:</strong> output only if material is known</li>
+<li><strong>Specification:</strong> output only if specification is known</li>
 <li><strong>Origin:</strong> China</li>
 </ul>
 <hr>
