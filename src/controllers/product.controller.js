@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const aiProductContentService = require('../services/aiProductContent.service');
 const permissionService = require('../services/productContactPermission.service');
 const productSearchService = require('../services/productSearch.service');
 const { success, fail } = require('../utils/response');
@@ -280,9 +281,45 @@ exports.adminProductList = async (req, res) => {
   await queryProductList(req, res, false, 'Failed to get admin product list');
 };
 
+exports.adminProductAiGenerate = async (req, res) => {
+  try {
+    const content = await aiProductContentService.generateProductContent(req.body || {});
+    success(res, content);
+  } catch (error) {
+    console.error(error);
+    fail(res, error.message || 'Failed to generate product content', error.statusCode || 500);
+  }
+};
+
 exports.h5ProductList = async (req, res) => {
   await queryProductList(req, res, true, 'Failed to get h5 product list');
 };
+
+exports.h5ProductAiGenerateTemplate = async (req, res) => {
+  try {
+    success(res, aiProductContentService.getProductContentTemplate());
+  } catch (error) {
+    console.error(error);
+    fail(res, 'Failed to get AI generate template');
+  }
+};
+
+exports.h5ProductAiGenerateContent = async (req, res) => {
+  try {
+    const content = await aiProductContentService.getProductAiContent(req.params.productId);
+
+    if (!content) {
+      return fail(res, 'AI generated content not found', 404);
+    }
+
+    success(res, content);
+  } catch (error) {
+    console.error(error);
+    fail(res, error.message || 'Failed to get AI generated content', error.statusCode || 500);
+  }
+};
+
+exports.h5ProductAiContentDetail = exports.h5ProductAiGenerateContent;
 
 exports.h5ProductSearch = async (req, res) => {
   try {

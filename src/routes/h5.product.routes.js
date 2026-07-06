@@ -15,6 +15,9 @@ function noCache(req, res, next) {
 
 router.get('/list', noCache, optionalAuth, productController.h5ProductList);
 router.get('/search', noCache, productController.h5ProductSearch);
+router.get('/ai-generate/template', noCache, productController.h5ProductAiGenerateTemplate);
+router.get('/ai-content/:productId', noCache, productController.h5ProductAiContentDetail);
+router.get('/ai-generate/:productId', noCache, productController.h5ProductAiGenerateContent);
 router.get('/detail/:id', noCache, optionalAuth, productController.h5ProductDetail);
 
 module.exports = router;
