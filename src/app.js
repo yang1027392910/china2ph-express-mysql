@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('./config/env');
 
+const sitemapRoutes = require('./routes/sitemap');
 const h5CategoryRoutes = require('./routes/h5.category.routes');
 const h5ProductRoutes = require('./routes/h5.product.routes');
 const h5HotProductRoutes = require('./routes/h5.hotProduct.routes');
@@ -45,6 +46,7 @@ app.get('/', (req, res) => {
   res.json({ code: 200, message: 'China2PH API is running' });
 });
 
+app.use('/', sitemapRoutes);
 app.use('/api/h5/category', h5CategoryRoutes);
 app.use('/api/h5/product', h5ProductRoutes);
 app.use('/api/h5/hotProduct', h5HotProductRoutes);
