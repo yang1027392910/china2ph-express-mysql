@@ -10,7 +10,7 @@ const fixedSitemapUrls = [
   { pathname: '/procurement-support', changefreq: 'monthly', priority: '0.7' },
   { pathname: '/about-policies', changefreq: 'monthly', priority: '0.6' }
 ];
-let productDateColumnSelect;
+let productSitemapSource;
 
 function escapeXml(value) {
   return String(value)
@@ -28,17 +28,36 @@ function formatDate(value) {
     : date.toISOString().slice(0, 10);
 }
 
-async function getProductDateColumnSelect() {
-  if (productDateColumnSelect !== undefined) {
-    return productDateColumnSelect;
+async function getProductSitemapSource() {
+  if (productSitemapSource) {
+    return productSitemapSource;
   }
 
-  const [columns] = await db.query('SHOW COLUMNS FROM product');
+  const [[productListTable]] = await db.query("SHOW TABLES LIKE 'productlist'");
+  let table = productListTable ? 'productlist' : null;
+
+  if (!table) {
+    const [[productTable]] = await db.query("SHOW TABLES LIKE 'product'");
+    table = productTable ? 'product' : null;
+  }
+
+  if (!table) {
+    throw new Error('Product table not found');
+  }
+
+  const [columns] = await db.query(`SHOW COLUMNS FROM ${table}`);
   const columnSet = new Set(columns.map(column => column.Field));
   const dateColumns = ['updated_at', 'created_at'].filter(column => columnSet.has(column));
-  productDateColumnSelect = dateColumns.length ? `, ${dateColumns.join(', ')}` : '';
+  const dateColumnSelect = dateColumns.length ? `, ${dateColumns.join(', ')}` : '';
+  const statusWhereSql = columnSet.has('status') ? 'WHERE status = 1' : '';
 
-  return productDateColumnSelect;
+  productSitemapSource = {
+    table,
+    dateColumnSelect,
+    statusWhereSql
+  };
+
+  return productSitemapSource;
 }
 
 function buildSitemapUrlXml({ loc, lastmod, changefreq = 'weekly', priority = '0.8' }) {
@@ -52,11 +71,11 @@ function buildSitemapUrlXml({ loc, lastmod, changefreq = 'weekly', priority = '0
 }
 
 async function getActiveProducts() {
-  const dateColumnSelect = await getProductDateColumnSelect();
+  const source = await getProductSitemapSource();
   const [products] = await db.query(`
-    SELECT id${dateColumnSelect}
-    FROM product
-    WHERE status = 1
+    SELECT id${source.dateColumnSelect}
+    FROM ${source.table}
+    ${source.statusWhereSql}
     ORDER BY id ASC
   `);
 
