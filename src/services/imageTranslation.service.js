@@ -1,7 +1,7 @@
 const OpenAI = require('openai');
 const { toFile } = require('openai/uploads');
 
-const DEFAULT_IMAGE_EDIT_MODEL = 'gpt-image-1';
+const DEFAULT_IMAGE_EDIT_MODEL = 'gpt-image-2';
 
 function getImageEditPrompt() {
   return `You are a professional e-commerce product image localization assistant.
