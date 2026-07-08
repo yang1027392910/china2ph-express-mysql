@@ -80,16 +80,21 @@ async function editProductImageText(file) {
   );
 
   try {
-    const response = await client.images.edit({
+    const editParams = {
       model,
       image: uploadableImage,
       prompt: getImageEditPrompt(),
       n: 1,
       size: 'auto',
       quality: 'auto',
-      output_format: 'png',
-      input_fidelity: 'high'
-    });
+      output_format: 'png'
+    };
+
+    if (model === 'gpt-image-1') {
+      editParams.input_fidelity = 'high';
+    }
+
+    const response = await client.images.edit(editParams);
 
     const b64Json = response.data?.[0]?.b64_json;
     if (!b64Json) {
