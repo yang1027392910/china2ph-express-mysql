@@ -35,6 +35,7 @@ const adminUserVerificationRoutes = require('./routes/admin.userVerification.rou
 const adminEmailCodeLogRoutes = require('./routes/admin.emailCodeLog.routes');
 const homeRoutes = require('./routes/home.routes');
 const profitRoutes = require('./routes/profit.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use('/api/admin/user-verification', adminUserVerificationRoutes);
 app.use('/api/admin/emailCodeLog', adminEmailCodeLogRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/profit', profitRoutes);
+app.use('/api/ai', aiRoutes);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
