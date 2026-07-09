@@ -75,6 +75,8 @@ continues to use `.env`.
 - POST /api/admin/user/list/created
 - POST /api/admin/user/list/update
 - POST /api/admin/user/list/status
+- POST /api/admin/user/list/delete
+- DELETE /api/admin/user/list/:id
 - POST /api/admin/user/list/dele
 - GET /api/admin/emailCodeLog/list?page=1&pageSize=10&keyword=test&scene=login&status=0&sendStatus=1
 - GET /api/admin/emailCodeLog/detail/:id

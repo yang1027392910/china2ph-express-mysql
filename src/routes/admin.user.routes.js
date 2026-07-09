@@ -20,7 +20,9 @@ router.post('/list/update', noCache, adminAuth, userController.adminUpdate);
 router.put('/list/update/:id', noCache, adminAuth, userController.adminUpdate);
 router.post('/list/status', noCache, adminAuth, userController.adminUpdateStatus);
 router.patch('/list/status/:id', noCache, adminAuth, userController.adminUpdateStatus);
+router.post('/list/delete', noCache, adminAuth, userController.adminDelete);
 router.post('/list/dele', noCache, adminAuth, userController.adminDelete);
+router.delete('/list/:id', noCache, adminAuth, userController.adminDelete);
 router.delete('/list/dele/:id', noCache, adminAuth, userController.adminDelete);
 
 module.exports = router;
