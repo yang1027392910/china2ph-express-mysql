@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
-const { optionalAuth } = require('../middlewares/auth.middleware');
+const cartController = require('../controllers/cart.controller');
+const { auth, optionalAuth } = require('../middlewares/auth.middleware');
 
 function noCache(req, res, next) {
   res.set({
@@ -19,5 +20,9 @@ router.get('/ai-generate/template', noCache, productController.h5ProductAiGenera
 router.get('/ai-content/:productId', noCache, productController.h5ProductAiContentDetail);
 router.get('/ai-generate/:productId', noCache, productController.h5ProductAiGenerateContent);
 router.get('/detail/:id', noCache, optionalAuth, productController.h5ProductDetail);
+router.post('/cart/add', noCache, auth, cartController.add);
+router.get('/cart/list', noCache, auth, cartController.list);
+router.put('/cart/update', noCache, auth, cartController.update);
+router.delete('/cart/delete', noCache, auth, cartController.delete);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+const couponService = require('../services/coupon.service');
 const authService = require('../services/auth.service');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
@@ -283,6 +284,7 @@ exports.h5EmailCodeLogin = async (req, res) => {
       );
 
       userId = result.insertId;
+      await couponService.grantRegistrationRewards(connection, userId);
     } else {
       await connection.query(
         `UPDATE \`user\`

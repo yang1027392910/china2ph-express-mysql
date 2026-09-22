@@ -1,3 +1,4 @@
+const couponService = require('../services/coupon.service');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 const {
@@ -118,6 +119,7 @@ exports.adminDetail = async (req, res) => {
 };
 
 exports.adminCreate = async (req, res) => {
+  let connection;
   try {
     const body = req.body || {};
     const email = String(body.email || '').trim();
@@ -144,9 +146,11 @@ exports.adminCreate = async (req, res) => {
     }
 
     await ensureInviteSchema(pool);
-    const inviteCode = await generateInviteCode(pool);
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const inviteCode = await generateInviteCode(connection);
 
-    const [result] = await pool.query(
+    const [result] = await connection.query(
       `INSERT INTO \`user\`
         (email, nickname, avatar, status, register_ip, login_count, invite_code, can_lottery, created_at, updated_at)
       VALUES
@@ -163,15 +167,20 @@ exports.adminCreate = async (req, res) => {
     );
 
     const id = result.insertId;
-    const [[user]] = await pool.query(
+    await couponService.grantRegistrationRewards(connection, id);
+    const [[user]] = await connection.query(
       `${getUserSelectSql()} WHERE u.id = ?`,
       [id]
     );
 
+    await connection.commit();
     success(res, user, 'created');
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error(error);
     fail(res, 'Failed to create admin user');
+  } finally {
+    if (connection) connection.release();
   }
 };
 

@@ -118,6 +118,18 @@ async function main() {
       INDEX idx_favorite_user_created_at (user_id, created_at),
       INDEX idx_favorite_product_id (product_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表'`,
+    `CREATE TABLE IF NOT EXISTS cart (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '购物车ID',
+      user_id BIGINT NOT NULL COMMENT '用户ID',
+      product_id BIGINT NOT NULL COMMENT '商品ID',
+      quantity INT NOT NULL DEFAULT 1 COMMENT '购买数量',
+      checked TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否勾选',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+      UNIQUE KEY uk_user_product (user_id, product_id),
+      INDEX idx_cart_user_updated_at (user_id, updated_at),
+      INDEX idx_cart_product_id (product_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表'`,
     `CREATE TABLE IF NOT EXISTS procurement_contact (
       id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
       contact_type VARCHAR(20) NOT NULL COMMENT '联系方式类型：messenger/whatsapp/telegram/phone/email',
@@ -128,6 +140,36 @@ async function main() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='采购客服联系方式表'`,
+    `CREATE TABLE IF NOT EXISTS \`order\` (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '订单ID',
+      order_no VARCHAR(50) NOT NULL COMMENT '订单编号',
+      product_images JSON DEFAULT NULL COMMENT '订单商品图片快照数组',
+      user_id BIGINT NOT NULL COMMENT '用户ID',
+      total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '商品总金额',
+      discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '优惠金额',
+      shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '运费',
+      pay_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '应付金额',
+      delivery_type TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 Self Pickup，2 Delivery',
+      status TINYINT NOT NULL DEFAULT 0 COMMENT '0 Pending，1 Confirmed，2 Processing，3 Completed，4 Cancelled',
+      remark VARCHAR(500) DEFAULT '' COMMENT '备注',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+      UNIQUE KEY uk_order_no (order_no),
+      INDEX idx_order_user_created_at (user_id, created_at),
+      INDEX idx_order_status_created_at (status, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单主表'`,
+    `CREATE TABLE IF NOT EXISTS order_item (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '订单商品ID',
+      order_id BIGINT NOT NULL COMMENT '订单ID',
+      product_id BIGINT NOT NULL COMMENT '商品ID',
+      product_name VARCHAR(255) NOT NULL COMMENT '商品快照名称',
+      product_image VARCHAR(255) DEFAULT '' COMMENT '商品快照图片',
+      price DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '商品单价',
+      quantity INT NOT NULL DEFAULT 1 COMMENT '购买数量',
+      subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '小计金额',
+      INDEX idx_order_item_order_id (order_id),
+      INDEX idx_order_item_product_id (product_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单商品表'`,
     `CREATE TABLE IF NOT EXISTS profit_calculation (
       id BIGINT PRIMARY KEY AUTO_INCREMENT,
       product_id BIGINT,
@@ -184,6 +226,10 @@ async function main() {
   for (const sql of sqlList) {
     await pool.query(sql);
   }
+
+  const couponConnection = await pool.getConnection();
+  try { await require('./migrate-coupon')(couponConnection); }
+  finally { couponConnection.release(); }
 
   await pool.query('DELETE FROM home_hot_product');
   await pool.query('DELETE FROM hot_product');

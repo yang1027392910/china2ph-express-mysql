@@ -1,3 +1,4 @@
+const couponService = require('../services/coupon.service');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 const { ensureInviteSchema } = require('../utils/invite');
@@ -178,6 +179,10 @@ async function reviewVerification(req, res, status, successMessage) {
         WHERE id = ?`,
         [id]
       );
+    }
+
+    if (status === 1) {
+      await couponService.activateVerificationReward(connection, verification.userId);
     }
 
     const [[reviewedVerification]] = await connection.query(

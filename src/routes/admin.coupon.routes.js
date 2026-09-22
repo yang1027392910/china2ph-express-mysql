@@ -1,0 +1,12 @@
+﻿const router = require('express').Router();
+const controller = require('../controllers/coupon.controller');
+const { adminAuth } = require('../middlewares/auth.middleware');
+router.use(adminAuth);
+router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.get('/config', controller.config);
+router.put('/config/:id', controller.updateConfig);
+router.get('/user/list', controller.adminList);
+router.get('/user/:id', controller.detail);
+router.post('/send', controller.send);
+router.put('/user/:id/disable', controller.disable);
+module.exports = router;

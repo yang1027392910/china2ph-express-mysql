@@ -4,7 +4,9 @@
     "dev:local": "nodemon src/app.js --env=.env.local",
     "start": "node src/app.js --env=.env.production",
     "start:local": "node src/app.js --env=.env.local",
-    "init-db": "node src/scripts/init-db.js"
+    "init-db": "node src/scripts/init-db.js",
+    "test": "node --test tests/*.test.js",
+    "migrate:coupon": "node src/scripts/migrate-coupon.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
