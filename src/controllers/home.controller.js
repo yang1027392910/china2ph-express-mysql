@@ -7,6 +7,7 @@ async function queryHotProducts(userId) {
     `SELECT 
       p.id,
       p.category_id AS categoryId,
+      p.sale_type AS saleType,
       p.title AS name,
       p.cover AS image,
       p.china_cost AS chinaCost,
@@ -65,6 +66,7 @@ async function queryCategoryProducts(userId, limit = 3) {
       `SELECT
         p.id,
         p.category_id AS categoryId,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,

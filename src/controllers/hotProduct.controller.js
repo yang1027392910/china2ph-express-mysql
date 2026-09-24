@@ -244,6 +244,7 @@ async function queryHotProductList(req, res, onlyEnabled, errorMessage) {
         h.sort,
         h.status,
         p.id AS productId,
+        p.sale_type AS saleType,
         p.title,
         p.cover,
         p.category_id AS categoryId,

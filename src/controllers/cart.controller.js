@@ -110,6 +110,7 @@ exports.list = async (req, res) => {
         c.updated_at AS updatedAt,
         p.category_id AS categoryId,
         cat.name AS categoryName,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,

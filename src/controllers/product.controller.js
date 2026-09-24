@@ -43,7 +43,8 @@ exports.list = async (req, res) => {
       `SELECT 
         p.id,
         p.category_id AS categoryId,
-        p.title AS name,
+        p.sale_type AS saleType,
+      p.title AS name,
         p.sku,
         p.cover AS image,
         p.china_cost AS chinaCost,
@@ -80,6 +81,7 @@ exports.detail = async (req, res) => {
         p.id,
         p.category_id AS categoryId,
         c.name AS categoryName,
+        p.sale_type AS saleType,
         p.title,
         p.sku,
         p.cover,
@@ -187,6 +189,7 @@ async function queryProductList(req, res, onlyEnabled, errorMessage) {
         p.id,
         p.category_id AS categoryId,
         c.name AS categoryName,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,
@@ -356,6 +359,7 @@ exports.h5ProductDetail = async (req, res) => {
         p.id,
         p.category_id AS categoryId,
         c.name AS categoryName,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,
@@ -454,6 +458,11 @@ exports.adminProductCreate = async (req, res) => {
   try {
     const body = req.body || {};
     const title = normalizeTextValue(body.title).trim();
+    const saleType = body.saleType !== undefined ? body.saleType : body.sale_type;
+    if (saleType !== undefined && ![1, 2, '1', '2'].includes(saleType)) {
+      return fail(res, 'saleType must be 1 (In Stock) or 2 (Pre-order)', 400);
+    }
+
 
     if (!title) {
       return fail(res, 'Product title is required', 400);
@@ -466,6 +475,7 @@ exports.adminProductCreate = async (req, res) => {
     const id = normalizeNumberValue(body.id, idRows[0].nextId);
     const product = {
       id,
+      sale_type: saleType === undefined ? 1 : Number(saleType),
       category_id: normalizeNumberValue(pickBodyValue(body, 'categoryId', 'category_id')),
       title,
       subtitle: normalizeTextValue(body.subtitle),
@@ -487,11 +497,12 @@ exports.adminProductCreate = async (req, res) => {
 
     await pool.query(
       `INSERT INTO productlist
-        (id, category_id, title, subtitle, cover, images, description, china_price, shipping_fee, ph_price, profit, minimum_order_quantity, stock, sales, status, created_at)
+        (id, sale_type, category_id, title, subtitle, cover, images, description, china_price, shipping_fee, ph_price, profit, minimum_order_quantity, stock, sales, status, created_at)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         product.id,
+        product.sale_type,
         product.category_id,
         product.title,
         product.subtitle,
@@ -511,6 +522,7 @@ exports.adminProductCreate = async (req, res) => {
 
     success(res, {
       id: product.id,
+      saleType: product.sale_type,
       categoryId: product.category_id,
       title: product.title,
       subtitle: product.subtitle,
@@ -541,7 +553,13 @@ exports.adminProductUpdate = async (req, res) => {
       return fail(res, 'Product id is required', 400);
     }
 
+    const saleType = body.saleType !== undefined ? body.saleType : body.sale_type;
+    if (saleType !== undefined && ![1, 2, '1', '2'].includes(saleType)) {
+      return fail(res, 'saleType must be 1 (In Stock) or 2 (Pre-order)', 400);
+    }
+
     const fieldMap = [
+      { camelKey: 'saleType', snakeKey: 'sale_type', column: 'sale_type', normalize: Number },
       {
         camelKey: 'categoryId',
         snakeKey: 'category_id',
@@ -656,6 +674,7 @@ exports.adminProductUpdate = async (req, res) => {
         p.id,
         p.category_id AS categoryId,
         c.name AS categoryName,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,

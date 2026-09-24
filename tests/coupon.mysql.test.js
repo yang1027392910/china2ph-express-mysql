@@ -28,11 +28,11 @@ test('Coupon MySQL integration', { skip: process.env.COUPON_MYSQL_TEST !== '1' }
       if (/^CREATE TABLE IF NOT EXISTS (`user`|`order`|order_item|cart|email_code_log)\s*\(/.test(sql)) await pool.query(sql);
     }
     await pool.query('ALTER TABLE `user` ADD verification_status TINYINT DEFAULT -1');
-    await pool.query(`CREATE TABLE productlist (id BIGINT PRIMARY KEY, title VARCHAR(255), cover VARCHAR(255), ph_price DECIMAL(10,2), status TINYINT) ENGINE=InnoDB`);
+    await pool.query(`CREATE TABLE productlist (id BIGINT PRIMARY KEY, title VARCHAR(255), cover VARCHAR(255), ph_price DECIMAL(10,2), status TINYINT, sale_type TINYINT NOT NULL DEFAULT 1) ENGINE=InnoDB`);
     await pool.query(`CREATE TABLE user_verification (id BIGINT PRIMARY KEY AUTO_INCREMENT, user_id BIGINT UNIQUE, full_name VARCHAR(100), phone VARCHAR(50), email VARCHAR(100), address VARCHAR(255), city VARCHAR(100), shop_name VARCHAR(100), business_type VARCHAR(100), store_description TEXT, store_photos JSON, status TINYINT DEFAULT 0, remark VARCHAR(255), reviewed_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, invite_counted TINYINT DEFAULT 0) ENGINE=InnoDB`);
     const migrationConnection = await pool.getConnection();
     try { await migrate(migrationConnection); await migrate(migrationConnection); } finally { migrationConnection.release(); }
-    await pool.query("INSERT INTO productlist VALUES (1, 'Test product', '/test.png', 30.00, 1), (2, 'Decimal product', '', 0.10, 1)");
+    await pool.query("INSERT INTO productlist (id, title, cover, ph_price, status) VALUES (1, 'Test product', '/test.png', 30.00, 1), (2, 'Decimal product', '', 0.10, 1)");
     const dbPath = require.resolve('../src/config/db');
     require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: pool };
     process.env.ENABLE_TEST_EMAIL_CODE = 'true';
@@ -281,6 +281,44 @@ test('Coupon MySQL integration', { skip: process.env.COUPON_MYSQL_TEST !== '1' }
       const config = await api('/api/admin/coupon/config', 'GET', undefined, adminToken);
       const connection = await pool.getConnection(); try { await migrate(connection); } finally { connection.release(); }
       assert.equal((await api('/api/admin/coupon/config', 'GET', undefined, adminToken)).data[0].amount, config.data[0].amount);
+    });
+    await t.test('manual payment lifecycle, permissions and concurrent approval', async () => {
+      const created = await api('/api/h5/order/create', 'POST', { items: [{ productId: 1, quantity: 1 }] });
+      assert.equal(created.code, 0, JSON.stringify(created));
+      const id = created.data.id;
+      assert.equal(created.data.paymentStatus, 0); assert.equal(created.data.paymentMethod, 0);
+      const body = {orderId: id, paymentMethod: 2, referenceNo: '00123456789'};
+      const other = auth.generateToken({id: userId + 100000, role: 'h5'});
+      assert.equal((await api('/api/h5/order/pay', 'PUT', body, null)).status, 401);
+      assert.equal((await api('/api/h5/order/pay', 'PUT', body, other)).status, 404);
+      assert.equal((await api('/api/h5/order/pay', 'PUT', body, adminToken)).status, 403);
+      assert.equal((await api('/api/admin/order/payment/approve', 'PUT', {orderId: id})).status, 403);
+      assert.equal((await api('/api/admin/order/payment/approve', 'PUT', {orderId: id}, adminToken)).status, 409);
+      for (const invalid of [{paymentMethod: 0}, {paymentMethod: true}, {referenceNo: ''}, {referenceNo: 'x'.repeat(101)}, {referenceNo: 123}, {orderId: -1}]) {
+        assert.equal((await api('/api/h5/order/pay', 'PUT', {...body, ...invalid})).status, 400);
+      }
+      for (const paymentMethod of [1, 2]) {
+        const paid = await api('/api/h5/order/pay', 'PUT', {...body, paymentMethod});
+        assert.equal(paid.code, 0, JSON.stringify(paid));
+        assert.equal(paid.data.paymentStatus, 1); assert.equal(paid.data.status, created.data.status);
+        assert.equal(paid.data.paymentMethod, paymentMethod); assert.equal(paid.data.paymentReference, body.referenceNo);
+      }
+      const list = await api('/api/admin/order/list?pageSize=100', 'GET', undefined, adminToken);
+      const row = list.data.list.find(row => row.id === id);
+      assert.equal(row.paymentStatus, 1); assert.equal(row.paymentMethod, 2); assert.equal(row.paymentReference, body.referenceNo);
+      const detail = await api('/api/h5/order/detail/' + id);
+      assert.equal(detail.data.paymentStatus, 1);
+      const approvals = await Promise.all([1, 2].map(() => api('/api/admin/order/payment/approve', 'PUT', {orderId: id}, adminToken)));
+      for (const result of approvals) {
+        assert.equal(result.code, 0, JSON.stringify(result)); assert.equal(result.data.paymentStatus, 2); assert.equal(result.data.status, 3);
+      }
+      assert.equal((await api('/api/h5/order/pay', 'PUT', body)).status, 409);
+      const completed = await api('/api/admin/order/detail/' + id, 'GET', undefined, adminToken);
+      assert.equal(completed.data.paymentStatus, 2); assert.equal(completed.data.status, 3);
+      const cancelled = await api('/api/h5/order/create', 'POST', { items: [{ productId: 1, quantity: 1 }] });
+      await api('/api/admin/order/update', 'PUT', {id: cancelled.data.id, status: 4}, adminToken);
+      assert.equal((await api('/api/h5/order/pay', 'PUT', {...body, orderId: cancelled.data.id})).status, 409);
+      assert.equal((await api('/api/admin/order/payment/approve', 'PUT', {orderId: cancelled.data.id}, adminToken)).status, 409);
     });
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));

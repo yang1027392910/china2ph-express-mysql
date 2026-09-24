@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
+const paymentController = require('../controllers/orderPayment.controller');
 const { adminAuth } = require('../middlewares/auth.middleware');
 
 function noCache(req, res, next) {
@@ -20,5 +21,7 @@ router.put('/update', noCache, adminAuth, orderController.adminUpdate);
 router.put('/update/:id', noCache, adminAuth, orderController.adminUpdate);
 router.put('/item/update', noCache, adminAuth, orderController.adminItemUpdate);
 router.put('/item/update/:id', noCache, adminAuth, orderController.adminItemUpdate);
+
+router.put('/payment/approve', noCache, adminAuth, paymentController.approve);
 
 module.exports = router;

@@ -40,6 +40,7 @@ function buildSearchSql(source) {
     listSql: `
       SELECT
         p.id,
+        p.sale_type AS saleType,
         p.title,
         p.cover,
         p.description,

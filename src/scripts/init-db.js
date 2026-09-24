@@ -16,6 +16,7 @@ async function main() {
       id BIGINT PRIMARY KEY AUTO_INCREMENT,
       category_id BIGINT NOT NULL,
       title VARCHAR(255) NOT NULL,
+      sale_type TINYINT NOT NULL DEFAULT 1 COMMENT '1 = In Stock, 2 = Pre-order',
       sku VARCHAR(100),
       cover VARCHAR(255),
       description TEXT,
@@ -142,6 +143,9 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='采购客服联系方式表'`,
     `CREATE TABLE IF NOT EXISTS \`order\` (
       id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '订单ID',
+      payment_method TINYINT DEFAULT 0,
+      payment_status TINYINT DEFAULT 0,
+      payment_reference VARCHAR(100),
       order_no VARCHAR(50) NOT NULL COMMENT '订单编号',
       product_images JSON DEFAULT NULL COMMENT '订单商品图片快照数组',
       user_id BIGINT NOT NULL COMMENT '用户ID',

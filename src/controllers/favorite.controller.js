@@ -88,6 +88,7 @@ exports.list = async (req, res) => {
       `SELECT
         p.id,
         p.category_id AS categoryId,
+        p.sale_type AS saleType,
         p.title,
         p.subtitle,
         p.cover,

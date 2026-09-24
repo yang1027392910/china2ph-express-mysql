@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
+const paymentController = require('../controllers/orderPayment.controller');
 const { auth } = require('../middlewares/auth.middleware');
 
 function noCache(req, res, next) {
@@ -17,5 +18,7 @@ router.post('/create', noCache, auth, orderController.create);
 router.get('/list', noCache, auth, orderController.list);
 router.get('/detail', noCache, auth, orderController.detail);
 router.get('/detail/:id', noCache, auth, orderController.detail);
+
+router.put('/pay', noCache, auth, paymentController.pay);
 
 module.exports = router;
